@@ -22,7 +22,7 @@
   <div class="toolbar" style="margin-top: 1.5rem;">
     <h2 style="margin: 0;">Samples</h2>
     <div style="display: flex; gap: 0.5rem;">
-      <a class="btn" href="{{ url_for('projects.upload_new', project_id=project.id) }}">Upload Lab Report</a>
+      <a class="btn" href="{{ url_for('uploads.dump') }}">Upload Lab Report</a>
       <a class="btn secondary" href="#">Add Sample Manually</a>
     </div>
   </div>
@@ -33,7 +33,7 @@
     <div class="empty">
       <p>No samples yet.</p>
       <div style="display: flex; gap: 0.5rem; justify-content: center;">
-        <a class="btn" href="{{ url_for('projects.upload_new', project_id=project.id) }}">Upload Lab Report</a>
+        <a class="btn" href="{{ url_for('uploads.dump') }}">Upload Lab Report</a>
         <a class="btn secondary" href="#">Add Sample Manually</a>
       </div>
     </div>

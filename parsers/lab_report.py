@@ -1,9 +1,13 @@
 import json
 import os
+import re
 from typing import Optional
 
 import anthropic
 import pdfplumber
+
+
+PROJECT_NUMBER_RE = re.compile(r"(\d{1,3}-\d{4})")
 
 
 MATRIX_OPTIONS = [
@@ -87,6 +91,8 @@ def parse_lab_report(file_path):
         "lab": None,
         "workorder": None,
         "project_text": None,
+        "project_number": None,
+        "project_name": None,
         "samples": [],
         "errors": [],
     }
@@ -125,8 +131,24 @@ def parse_lab_report(file_path):
     result["lab"] = parsed.get("lab")
     result["workorder"] = parsed.get("workorder")
     result["project_text"] = parsed.get("project_text")
+    result["project_number"] = _extract_project_number(result["project_text"])
+    result["project_name"] = _extract_project_name(result["project_text"])
     result["samples"] = _normalize_samples(parsed.get("samples") or [])
     return result
+
+
+def _extract_project_number(project_text: Optional[str]) -> Optional[str]:
+    if not project_text:
+        return None
+    match = PROJECT_NUMBER_RE.search(project_text)
+    return match.group(1) if match else None
+
+
+def _extract_project_name(project_text: Optional[str]) -> Optional[str]:
+    if not project_text or ";" not in project_text:
+        return None
+    after = project_text.split(";", 1)[1].strip()
+    return after or None
 
 
 def _extract_pdf_text(file_path):

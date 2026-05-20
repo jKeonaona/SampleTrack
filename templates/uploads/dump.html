@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Lab Report{% endblock %}
+
+{% block content %}
+  <h1>Upload Lab Report</h1>
+  <p class="subtitle">Drop a lab report PDF here. The system reads the project number from the PDF and routes samples to the right project, creating new projects automatically when needed.</p>
+
+  <form class="stacked" method="post" enctype="multipart/form-data" action="{{ url_for('uploads.upload') }}">
+    <div class="field">
+      <label for="report_pdf">Lab Report PDF</label>
+      <input type="file" id="report_pdf" name="report_pdf" accept="application/pdf,.pdf" required>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Upload &amp; Parse</button>
+    </div>
+  </form>
+
+  <div class="info-block" style="margin-top: 1.5rem;">
+    <h2 style="margin-top: 0; font-size: 1rem;">Sample ID prefix conventions</h2>
+    <dl>
+      <dt>AM-</dt><dd>Area Air</dd>
+      <dt>PM-</dt><dd>Personal Air</dd>
+      <dt>SS-</dt><dd>Soil</dd>
+      <dt>ES-</dt><dd>Excavated Soil</dd>
+      <dt>WW-</dt><dd>Liquid</dd>
+      <dt>PC-</dt><dd>Paint Chip</dd>
+      <dt>WS-</dt><dd>Wipe</dd>
+    </dl>
+  </div>
+{% endblock %}

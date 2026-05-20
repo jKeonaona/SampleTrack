@@ -4,6 +4,7 @@ import os
 
 from models import db, Project, Sample, Result
 from routes.projects import projects_bp
+from routes.uploads import uploads_bp
 
 load_dotenv()
 
@@ -15,6 +16,7 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-in-prod
 db.init_app(app)
 
 app.register_blueprint(projects_bp)
+app.register_blueprint(uploads_bp)
 
 
 @app.route("/")
