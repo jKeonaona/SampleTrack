@@ -1,6 +1,12 @@
+import json
+import os
+import tempfile
+from datetime import date, datetime
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
-from models import db, Project
+from models import db, Project, Sample, Result
+from parsers.mccampbell import MATRIX_OPTIONS, parse_mccampbell_pdf
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
 
@@ -56,3 +62,141 @@ def create():
 def detail(project_id):
     project = Project.query.get_or_404(project_id)
     return render_template("projects/detail.html", project=project, samples=project.samples)
+
+
+@projects_bp.route("/<int:project_id>/upload", methods=["GET"])
+def upload_new(project_id):
+    project = Project.query.get_or_404(project_id)
+    return render_template("uploads/new.html", project=project)
+
+
+@projects_bp.route("/<int:project_id>/upload", methods=["POST"])
+def upload(project_id):
+    project = Project.query.get_or_404(project_id)
+
+    uploaded = request.files.get("report_pdf")
+    if uploaded is None or not uploaded.filename:
+        flash("Please choose a PDF to upload.", "error")
+        return redirect(url_for("projects.upload_new", project_id=project.id))
+    if not uploaded.filename.lower().endswith(".pdf"):
+        flash("Only PDF files are accepted.", "error")
+        return redirect(url_for("projects.upload_new", project_id=project.id))
+
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(tmp_fd)
+    try:
+        uploaded.save(tmp_path)
+        parser_data = parse_mccampbell_pdf(tmp_path)
+    finally:
+        try:
+            os.remove(tmp_path)
+        except OSError:
+            pass
+
+    parser_data_json = json.dumps(parser_data)
+    return render_template(
+        "uploads/confirm.html",
+        project=project,
+        parser_data=parser_data,
+        parser_data_json=parser_data_json,
+        matrix_options=MATRIX_OPTIONS,
+    )
+
+
+@projects_bp.route("/<int:project_id>/upload/save", methods=["POST"])
+def upload_save(project_id):
+    project = Project.query.get_or_404(project_id)
+
+    raw = request.form.get("parser_data") or ""
+    try:
+        parser_data = json.loads(raw)
+    except json.JSONDecodeError:
+        flash("Could not read parsed data. Please re-upload the PDF.", "error")
+        return redirect(url_for("projects.upload_new", project_id=project.id))
+
+    workorder = parser_data.get("workorder")
+    samples_in = parser_data.get("samples") or []
+
+    sample_count = 0
+    result_count = 0
+    for idx, sample_data in enumerate(samples_in):
+        matrix = (request.form.get(f"matrix_{idx}") or sample_data.get("matrix") or "Other").strip()
+
+        sample = Sample(
+            project_id=project.id,
+            client_sample_id=(sample_data.get("client_sample_id") or sample_data.get("lab_sample_id") or "UNKNOWN"),
+            lab_sample_id=sample_data.get("lab_sample_id"),
+            lab_workorder=workorder,
+            matrix=matrix,
+            collection_date=_parse_date(sample_data.get("collection_date")),
+            collection_time=sample_data.get("collection_time"),
+            sample_volume=sample_data.get("sample_volume"),
+        )
+        db.session.add(sample)
+        db.session.flush()
+        sample_count += 1
+
+        for r_data in sample_data.get("results") or []:
+            analyte = (r_data.get("analyte") or "").strip()
+            result_value = (r_data.get("result_value") or "").strip()
+            if not analyte or not result_value:
+                continue
+            db.session.add(Result(
+                sample_id=sample.id,
+                analyte=analyte,
+                result_value=result_value,
+                result_numeric=_parse_numeric(result_value),
+                result_units=r_data.get("result_units") or sample_data.get("units"),
+                reporting_limit=r_data.get("reporting_limit"),
+                dilution_factor=r_data.get("dilution_factor"),
+                method_reference=sample_data.get("method"),
+                lab_report_number=workorder,
+                date_analyzed=_parse_datetime(r_data.get("date_analyzed")),
+            ))
+            result_count += 1
+
+    db.session.commit()
+    flash(f"Saved {sample_count} samples and {result_count} results.", "success")
+    return redirect(url_for("projects.detail", project_id=project.id))
+
+
+def _parse_date(value):
+    if not value:
+        return None
+    value = value.strip()
+    for fmt in ("%m/%d/%Y", "%m/%d/%y", "%Y-%m-%d", "%m-%d-%Y"):
+        try:
+            return datetime.strptime(value, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_datetime(value):
+    if not value:
+        return None
+    value = value.strip()
+    for fmt in (
+        "%m/%d/%Y %H:%M",
+        "%m/%d/%Y %I:%M %p",
+        "%m/%d/%Y",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+    ):
+        try:
+            return datetime.strptime(value, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_numeric(value):
+    if value is None:
+        return None
+    cleaned = str(value).strip().replace(",", "")
+    if cleaned == "" or cleaned.upper() == "ND":
+        return None
+    try:
+        return float(cleaned)
+    except ValueError:
+        return None

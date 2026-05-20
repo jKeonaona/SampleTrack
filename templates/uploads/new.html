@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Lab Report — {{ project.project_number }}{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Upload Lab Report</h1>
+    <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Back to {{ project.project_number }}</a>
+  </div>
+
+  <p class="subtitle">Upload a McCampbell Analytical lab report PDF. Other labs will fall through to AI parsing in a later phase.</p>
+
+  <form class="stacked" method="post" enctype="multipart/form-data" action="{{ url_for('projects.upload', project_id=project.id) }}">
+    <div class="field">
+      <label for="report_pdf">Lab Report PDF</label>
+      <input type="file" id="report_pdf" name="report_pdf" accept="application/pdf,.pdf" required>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Upload &amp; Parse</button>
+      <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

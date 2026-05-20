@@ -21,7 +21,10 @@
 
   <div class="toolbar" style="margin-top: 1.5rem;">
     <h2 style="margin: 0;">Samples</h2>
-    <a class="btn" href="#">New Sample</a>
+    <div style="display: flex; gap: 0.5rem;">
+      <a class="btn" href="{{ url_for('projects.upload_new', project_id=project.id) }}">Upload Lab Report</a>
+      <a class="btn secondary" href="#">Add Sample Manually</a>
+    </div>
   </div>
 
   {% if samples %}
@@ -29,7 +32,10 @@
   {% else %}
     <div class="empty">
       <p>No samples yet.</p>
-      <a class="btn" href="#">New Sample</a>
+      <div style="display: flex; gap: 0.5rem; justify-content: center;">
+        <a class="btn" href="{{ url_for('projects.upload_new', project_id=project.id) }}">Upload Lab Report</a>
+        <a class="btn secondary" href="#">Add Sample Manually</a>
+      </div>
     </div>
   {% endif %}
 {% endblock %}
