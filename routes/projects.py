@@ -6,7 +6,7 @@ from datetime import date, datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 
 from models import db, Project, Sample, Result
-from parsers.mccampbell import MATRIX_OPTIONS, parse_mccampbell_pdf
+from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
 
@@ -86,7 +86,7 @@ def upload(project_id):
     os.close(tmp_fd)
     try:
         uploaded.save(tmp_path)
-        parser_data = parse_mccampbell_pdf(tmp_path)
+        parser_data = parse_lab_report(tmp_path)
     finally:
         try:
             os.remove(tmp_path)
