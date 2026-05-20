@@ -2,9 +2,15 @@ from flask import Flask, render_template, jsonify
 from dotenv import load_dotenv
 import os
 
+from models import db, Project, Sample, Result
+
 load_dotenv()
 
 app = Flask(__name__, instance_relative_config=True)
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sampletrack.db"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db.init_app(app)
 
 
 @app.route("/")
