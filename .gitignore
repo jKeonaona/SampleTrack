@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+venv/
+venv.bak/
+
+# dotenv
+.env
+
+# Instance folder
+instance/
+
+# Database files
+*.db
+
+# PyCharm / VSCode
+.vscode/
+.idea/
+
+# Misc
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
