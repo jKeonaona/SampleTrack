@@ -3,19 +3,28 @@ from dotenv import load_dotenv
 import os
 
 from models import db, Project, Sample, Result
+from routes.projects import projects_bp
 
 load_dotenv()
 
 app = Flask(__name__, instance_relative_config=True)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///sampletrack.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-in-prod")
 
 db.init_app(app)
+
+app.register_blueprint(projects_bp)
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template(
+        "index.html",
+        project_count=Project.query.count(),
+        sample_count=Sample.query.count(),
+        result_count=Result.query.count(),
+    )
 
 
 @app.route("/health")

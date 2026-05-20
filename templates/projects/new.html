@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}New Project{% endblock %}
+
+{% block content %}
+  <h1>New Project</h1>
+
+  <form class="stacked" method="post" action="{{ url_for('projects.create') }}">
+    <div class="field">
+      <label for="project_number">Project Number</label>
+      <input type="text" id="project_number" name="project_number" required value="{{ form.project_number or '' }}">
+    </div>
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" required value="{{ form.name or '' }}">
+    </div>
+    <div class="field">
+      <label for="client">Client</label>
+      <input type="text" id="client" name="client" value="{{ form.client or '' }}">
+    </div>
+    <div class="field">
+      <label for="location">Location</label>
+      <input type="text" id="location" name="location" value="{{ form.location or '' }}">
+    </div>
+    <div class="field">
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        {% set current_status = form.status or 'active' %}
+        <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
+        <option value="archived" {% if current_status == 'archived' %}selected{% endif %}>Archived</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Create Project</button>
+      <a class="btn secondary" href="{{ url_for('projects.list_projects') }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

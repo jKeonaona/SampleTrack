@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}SampleTrack{% endblock %}</title>
+    <style>
+      :root {
+        --fg: #1f2933;
+        --muted: #6b7280;
+        --bg: #f7f8fa;
+        --surface: #ffffff;
+        --border: #e3e6eb;
+        --accent: #2b6cb0;
+        --accent-hover: #1f4f86;
+        --danger: #c0392b;
+        --success: #2f855a;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+        line-height: 1.5;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      a { color: var(--accent); text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      nav.topbar {
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        padding: 0.75rem 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+      }
+      nav.topbar .brand {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: var(--fg);
+      }
+      nav.topbar .links { display: flex; gap: 1rem; }
+      nav.topbar .links a { color: var(--fg); }
+      nav.topbar .links a:hover { color: var(--accent); text-decoration: none; }
+      main.content {
+        flex: 1;
+        max-width: 1100px;
+        width: 100%;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+      footer.sitefoot {
+        border-top: 1px solid var(--border);
+        background: var(--surface);
+        text-align: center;
+        padding: 0.75rem 1rem;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+      h1 { margin: 0 0 0.25rem; font-size: 1.75rem; }
+      h2 { margin: 1.5rem 0 0.75rem; font-size: 1.25rem; }
+      .subtitle { color: var(--muted); margin: 0 0 1.5rem; }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 1rem;
+      }
+      .stat-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1rem 1.25rem;
+      }
+      .stat-card .label { color: var(--muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; }
+      .stat-card .value { font-size: 2rem; font-weight: 600; margin-top: 0.25rem; }
+      table.data {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+      table.data th, table.data td {
+        text-align: left;
+        padding: 0.6rem 0.75rem;
+        border-bottom: 1px solid var(--border);
+      }
+      table.data th {
+        background: #f1f3f6;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted);
+      }
+      table.data tr:last-child td { border-bottom: none; }
+      .btn {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff;
+        padding: 0.5rem 0.9rem;
+        border-radius: 4px;
+        border: 1px solid var(--accent);
+        font-size: 0.95rem;
+        cursor: pointer;
+      }
+      .btn:hover { background: var(--accent-hover); border-color: var(--accent-hover); text-decoration: none; color: #fff; }
+      .btn.secondary {
+        background: var(--surface);
+        color: var(--fg);
+        border-color: var(--border);
+      }
+      .btn.secondary:hover { background: #eef0f4; color: var(--fg); }
+      .toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 1rem;
+      }
+      .empty {
+        background: var(--surface);
+        border: 1px dashed var(--border);
+        border-radius: 6px;
+        padding: 2rem;
+        text-align: center;
+        color: var(--muted);
+      }
+      .empty .btn { margin-top: 0.75rem; }
+      .info-block {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 1rem 1.25rem;
+      }
+      .info-block dl {
+        display: grid;
+        grid-template-columns: max-content 1fr;
+        gap: 0.4rem 1.25rem;
+        margin: 0;
+      }
+      .info-block dt { color: var(--muted); font-size: 0.85rem; }
+      .info-block dd { margin: 0; }
+      form.stacked label {
+        display: block;
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-bottom: 0.25rem;
+      }
+      form.stacked input[type="text"],
+      form.stacked select,
+      form.stacked textarea {
+        width: 100%;
+        padding: 0.5rem 0.6rem;
+        font: inherit;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: var(--surface);
+      }
+      form.stacked .field { margin-bottom: 1rem; }
+      form.stacked .actions { display: flex; gap: 0.75rem; margin-top: 0.5rem; }
+      .flashes { list-style: none; padding: 0; margin: 0 0 1rem; }
+      .flashes li {
+        padding: 0.6rem 0.9rem;
+        border-radius: 4px;
+        margin-bottom: 0.5rem;
+        border: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .flashes li.error { border-color: var(--danger); color: var(--danger); background: #fdecea; }
+      .flashes li.success { border-color: var(--success); color: var(--success); background: #ebf7f0; }
+      .status-pill {
+        display: inline-block;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        background: #eef0f4;
+        color: var(--fg);
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="topbar">
+      <a class="brand" href="/">SampleTrack</a>
+      <div class="links">
+        <a href="/projects">Projects</a>
+      </div>
+    </nav>
+    <main class="content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="sitefoot">Certified Coatings Company</footer>
+  </body>
+</html>

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.project_number }}: {{ project.name }}{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>{{ project.project_number }}: {{ project.name }}</h1>
+    <a class="btn secondary" href="{{ url_for('projects.list_projects') }}">Back to Projects</a>
+  </div>
+
+  <div class="info-block">
+    <dl>
+      <dt>Project Number</dt><dd>{{ project.project_number }}</dd>
+      <dt>Name</dt><dd>{{ project.name }}</dd>
+      <dt>Client</dt><dd>{{ project.client or "—" }}</dd>
+      <dt>Location</dt><dd>{{ project.location or "—" }}</dd>
+      <dt>Status</dt><dd><span class="status-pill">{{ project.status }}</span></dd>
+      <dt>Created</dt><dd>{{ project.created_at.strftime("%Y-%m-%d %H:%M") if project.created_at else "—" }}</dd>
+    </dl>
+  </div>
+
+  <div class="toolbar" style="margin-top: 1.5rem;">
+    <h2 style="margin: 0;">Samples</h2>
+    <a class="btn" href="#">New Sample</a>
+  </div>
+
+  {% if samples %}
+    <p>{{ samples|length }} sample(s).</p>
+  {% else %}
+    <div class="empty">
+      <p>No samples yet.</p>
+      <a class="btn" href="#">New Sample</a>
+    </div>
+  {% endif %}
+{% endblock %}

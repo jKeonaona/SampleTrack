@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Projects{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Projects</h1>
+    <a class="btn" href="{{ url_for('projects.new') }}">New Project</a>
+  </div>
+
+  {% if projects %}
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Project Number</th>
+          <th>Name</th>
+          <th>Client</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Samples</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for project in projects %}
+          <tr>
+            <td><a href="{{ url_for('projects.detail', project_id=project.id) }}">{{ project.project_number }}</a></td>
+            <td>{{ project.name }}</td>
+            <td>{{ project.client or "—" }}</td>
+            <td>{{ project.location or "—" }}</td>
+            <td><span class="status-pill">{{ project.status }}</span></td>
+            <td>{{ project.samples|length }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">
+      <p>No projects yet.</p>
+      <a class="btn" href="{{ url_for('projects.new') }}">New Project</a>
+    </div>
+  {% endif %}
+{% endblock %}

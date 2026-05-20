@@ -1,14 +1,23 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SampleTrack</title>
-  </head>
-  <body>
-    <main>
-      <h1>SampleTrack</h1>
-      <p>Sample analytical results tracking.</p>
-    </main>
-  </body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}SampleTrack{% endblock %}
+
+{% block content %}
+  <h1>SampleTrack</h1>
+  <p class="subtitle">Sample analytical results tracking</p>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Projects</div>
+      <div class="value">{{ project_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Samples</div>
+      <div class="value">{{ sample_count }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Results</div>
+      <div class="value">{{ result_count }}</div>
+    </div>
+  </div>
+{% endblock %}
