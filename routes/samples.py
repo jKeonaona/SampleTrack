@@ -1,12 +1,106 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
+from sqlalchemy import or_
 
-from models import db, Sample
+from models import db, Project, Sample
 from parsers.lab_report import MATRIX_OPTIONS
 from routes.projects import _parse_date
-from utils.calculations import evaluate_result
+from utils.calculations import evaluate_result, worst_sample_status
 
 samples_bp = Blueprint("samples", __name__)
+
+
+AVAILABLE_STATUSES = [
+    ("exceeded", "Exceeded"),
+    ("warning", "Warning"),
+    ("ok", "OK"),
+    ("no_data", "No Data"),
+]
+
+NEUTRAL_STATUSES = ("no_thresholds", "no_value", "no_results")
+
+
+@samples_bp.route("/samples", methods=["GET"])
+@login_required
+def list_samples():
+    # Performance note: worst_sample_status performs an N+1 query (one Results
+    # iteration per sample + one Threshold query per result). For the current
+    # dataset size this is fine. Optimize later by caching worst status on
+    # Sample or computing it in a background job.
+
+    project_id_raw = (request.args.get("project_id") or "").strip()
+    project_id = None
+    if project_id_raw:
+        try:
+            project_id = int(project_id_raw)
+        except ValueError:
+            project_id = None
+
+    matrix = (request.args.get("matrix") or "").strip()
+    if matrix and matrix not in MATRIX_OPTIONS:
+        matrix = ""
+
+    status_filter = (request.args.get("status") or "").strip()
+    valid_status_values = {key for key, _label in AVAILABLE_STATUSES}
+    if status_filter and status_filter not in valid_status_values:
+        status_filter = ""
+
+    q_str = (request.args.get("q") or "").strip()
+
+    query = Sample.query
+    if project_id is not None:
+        query = query.filter(Sample.project_id == project_id)
+    if matrix:
+        query = query.filter(Sample.matrix == matrix)
+    if q_str:
+        pattern = f"%{q_str}%"
+        query = query.join(Project).filter(or_(
+            Sample.client_sample_id.ilike(pattern),
+            Sample.lab_workorder.ilike(pattern),
+            Project.project_number.ilike(pattern),
+        ))
+
+    query = query.order_by(
+        Sample.collection_date.desc(),
+        Sample.client_sample_id.asc(),
+    )
+    all_samples = query.all()
+
+    sample_statuses = {s.id: worst_sample_status(s) for s in all_samples}
+
+    if status_filter:
+        if status_filter == "no_data":
+            all_samples = [
+                s for s in all_samples
+                if sample_statuses[s.id] in NEUTRAL_STATUSES
+            ]
+        else:
+            all_samples = [
+                s for s in all_samples
+                if sample_statuses[s.id] == status_filter
+            ]
+
+    filters = {
+        "project_id": project_id,
+        "matrix": matrix,
+        "status": status_filter,
+        "q": q_str,
+    }
+    filters_applied = bool(
+        project_id is not None or matrix or status_filter or q_str
+    )
+
+    return render_template(
+        "samples/list.html",
+        samples=all_samples,
+        sample_statuses=sample_statuses,
+        filters=filters,
+        filters_applied=filters_applied,
+        available_projects=Project.query.order_by(Project.project_number).all(),
+        available_matrices=MATRIX_OPTIONS,
+        available_statuses=AVAILABLE_STATUSES,
+        total_count=len(all_samples),
+    )
 
 
 @samples_bp.route("/samples/<int:sample_id>", methods=["GET"])

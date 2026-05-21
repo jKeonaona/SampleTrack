@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}All Samples{% endblock %}
+
+{% block content %}
+  <style>
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: flex-end;
+    }
+    .filter-bar > .field-group {
+      display: flex;
+      flex-direction: column;
+      min-width: 160px;
+    }
+    .filter-bar > .field-group.search-field { flex: 2; min-width: 240px; }
+    .filter-bar > .field-group.select-field { flex: 1; }
+    .filter-bar label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .filter-bar input[type="text"],
+    .filter-bar select {
+      padding: 0.5rem 0.6rem;
+      font: inherit;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+      width: 100%;
+    }
+    .filter-bar .submit-field {
+      display: flex;
+      flex-direction: row;
+      gap: 0.5rem;
+      align-items: center;
+    }
+  </style>
+
+  <h1>All Samples</h1>
+
+  {% set flag_labels = {
+    "exceeded": "Exceeded",
+    "warning": "Warning",
+    "ok": "OK",
+    "no_thresholds": "No Data",
+    "no_value": "No Data",
+    "no_results": "No Data",
+  } %}
+
+  <div class="info-block" style="margin-bottom: 1rem;">
+    <form class="filter-bar" method="get" action="{{ url_for('samples.list_samples') }}">
+      <div class="field-group search-field">
+        <label for="q">Search</label>
+        <input type="text" id="q" name="q" placeholder="Sample ID, Project Number, or WorkOrder..." value="{{ filters.q or '' }}">
+      </div>
+
+      <div class="field-group select-field">
+        <label for="project_id">Project</label>
+        <select id="project_id" name="project_id">
+          <option value="">All Projects</option>
+          {% for p in available_projects %}
+            <option value="{{ p.id }}" {% if filters.project_id == p.id %}selected{% endif %}>{{ p.project_number }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field-group select-field">
+        <label for="matrix">Matrix</label>
+        <select id="matrix" name="matrix">
+          <option value="">All Matrices</option>
+          {% for m in available_matrices %}
+            <option value="{{ m }}" {% if filters.matrix == m %}selected{% endif %}>{{ m }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field-group select-field">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="">All Statuses</option>
+          {% for value, label in available_statuses %}
+            <option value="{{ value }}" {% if filters.status == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="submit-field">
+        <button type="submit" class="btn">Apply Filters</button>
+        <a class="btn secondary" href="{{ url_for('samples.list_samples') }}">Clear</a>
+      </div>
+    </form>
+  </div>
+
+  <p class="subtitle">
+    Showing {{ total_count }} sample{% if total_count != 1 %}s{% endif %}{% if filters_applied %} (filtered){% endif %}.
+  </p>
+
+  {% if samples %}
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Client Sample ID</th>
+          <th>Project</th>
+          <th>Matrix</th>
+          <th>Collection Date</th>
+          <th>Sample Volume</th>
+          <th>Results</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in samples %}
+          {% set status = sample_statuses.get(s.id, "no_results") %}
+          <tr>
+            <td><a href="{{ url_for('samples.detail', sample_id=s.id) }}">{{ s.client_sample_id }}</a></td>
+            <td><a href="{{ url_for('projects.detail', project_id=s.project_id) }}">{{ s.project.project_number }}</a></td>
+            <td>{{ s.matrix }}</td>
+            <td>{{ s.collection_date.strftime("%Y-%m-%d") if s.collection_date else "—" }}</td>
+            <td>{{ s.sample_volume or "—" }}</td>
+            <td>{{ s.results|length }}</td>
+            <td><span class="flag-pill {{ status }}">{{ flag_labels.get(status, status) }}</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% elif filters_applied %}
+    <div class="empty">
+      <p>No samples match the current filters.</p>
+      <a class="btn secondary" href="{{ url_for('samples.list_samples') }}" style="margin-top: 0.5rem;">Clear filters</a>
+    </div>
+  {% else %}
+    <div class="empty">
+      <p>No samples uploaded yet. Upload a lab report to get started.</p>
+      <a class="btn" href="{{ url_for('uploads.dump') }}" style="margin-top: 0.5rem;">Upload</a>
+    </div>
+  {% endif %}
+{% endblock %}
