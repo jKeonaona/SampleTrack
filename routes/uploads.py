@@ -3,6 +3,7 @@ import os
 import tempfile
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required
 
 from models import db, Project, Sample, Result
 from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
@@ -12,11 +13,13 @@ uploads_bp = Blueprint("uploads", __name__, url_prefix="/upload")
 
 
 @uploads_bp.route("/", methods=["GET"])
+@login_required
 def dump():
     return render_template("uploads/dump.html")
 
 
 @uploads_bp.route("/", methods=["POST"])
+@login_required
 def upload():
     uploaded = request.files.get("report_pdf")
     if uploaded is None or not uploaded.filename:
@@ -54,6 +57,7 @@ def upload():
 
 
 @uploads_bp.route("/save", methods=["POST"])
+@login_required
 def save():
     raw = request.form.get("parser_data") or ""
     try:

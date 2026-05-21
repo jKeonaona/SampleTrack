@@ -4,6 +4,7 @@ import tempfile
 from datetime import date, datetime
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_required
 
 from models import db, Project, Sample, Result
 from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
@@ -12,17 +13,20 @@ projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
 
 
 @projects_bp.route("/", methods=["GET"])
+@login_required
 def list_projects():
     projects = Project.query.order_by(Project.created_at.desc()).all()
     return render_template("projects/list.html", projects=projects)
 
 
 @projects_bp.route("/new", methods=["GET"])
+@login_required
 def new():
     return render_template("projects/new.html", form={})
 
 
 @projects_bp.route("/", methods=["POST"])
+@login_required
 def create():
     form = {
         "project_number": (request.form.get("project_number") or "").strip(),
@@ -59,18 +63,21 @@ def create():
 
 
 @projects_bp.route("/<int:project_id>", methods=["GET"])
+@login_required
 def detail(project_id):
     project = Project.query.get_or_404(project_id)
     return render_template("projects/detail.html", project=project, samples=project.samples)
 
 
 @projects_bp.route("/<int:project_id>/upload", methods=["GET"])
+@login_required
 def upload_new(project_id):
     project = Project.query.get_or_404(project_id)
     return render_template("uploads/new.html", project=project)
 
 
 @projects_bp.route("/<int:project_id>/upload", methods=["POST"])
+@login_required
 def upload(project_id):
     project = Project.query.get_or_404(project_id)
 
@@ -104,6 +111,7 @@ def upload(project_id):
 
 
 @projects_bp.route("/<int:project_id>/upload/save", methods=["POST"])
+@login_required
 def upload_save(project_id):
     project = Project.query.get_or_404(project_id)
 

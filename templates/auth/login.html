@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In — SampleTrack{% endblock %}
+
+{% block content %}
+  <div style="max-width: 380px; margin: 3rem auto 0;">
+    <h1 style="text-align: center;">Sign In</h1>
+
+    <form class="stacked info-block" method="post" action="{{ url_for('auth.login_post') }}" style="margin-top: 1.5rem; padding: 1.5rem;">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autofocus value="{{ email or '' }}">
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn" style="flex: 1;">Sign In</button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

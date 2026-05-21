@@ -1,10 +1,12 @@
 from flask import Flask, render_template, jsonify
+from flask_login import LoginManager, current_user, login_required
 from dotenv import load_dotenv
 import os
 
-from models import db, Project, Sample, Result
+from models import db, Project, Sample, Result, User
 from routes.projects import projects_bp
 from routes.uploads import uploads_bp
+from routes.auth import auth_bp
 
 load_dotenv()
 
@@ -15,11 +17,23 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-only-change-in-prod
 
 db.init_app(app)
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "auth.login"
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
 app.register_blueprint(projects_bp)
 app.register_blueprint(uploads_bp)
+app.register_blueprint(auth_bp)
 
 
 @app.route("/")
+@login_required
 def index():
     return render_template(
         "index.html",
