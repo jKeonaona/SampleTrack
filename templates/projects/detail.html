@@ -29,14 +29,33 @@
   </div>
 
   {% if samples %}
-    <p>{{ samples|length }} sample(s).</p>
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Client Sample ID</th>
+          <th>Lab Sample ID</th>
+          <th>Matrix</th>
+          <th>Collection Date</th>
+          <th>Sample Volume</th>
+          <th>Results</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in samples %}
+          <tr>
+            <td><a href="{{ url_for('samples.detail', sample_id=s.id) }}">{{ s.client_sample_id }}</a></td>
+            <td>{{ s.lab_sample_id or "—" }}</td>
+            <td>{{ s.matrix }}</td>
+            <td>{{ s.collection_date.strftime("%Y-%m-%d") if s.collection_date else "—" }}</td>
+            <td>{{ s.sample_volume or "—" }}</td>
+            <td>{{ s.results|length }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   {% else %}
     <div class="empty">
-      <p>No samples yet.</p>
-      <div style="display: flex; gap: 0.5rem; justify-content: center;">
-        <a class="btn" href="{{ url_for('uploads.dump') }}">Upload Lab Report</a>
-        <a class="btn secondary" href="#">Add Sample Manually</a>
-      </div>
+      <p>No samples uploaded yet for this project. Use the Upload Lab Report button on the dashboard to add some.</p>
     </div>
   {% endif %}
 {% endblock %}

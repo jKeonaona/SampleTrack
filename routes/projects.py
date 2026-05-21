@@ -66,7 +66,13 @@ def create():
 @login_required
 def detail(project_id):
     project = Project.query.get_or_404(project_id)
-    return render_template("projects/detail.html", project=project, samples=project.samples)
+    samples = (
+        Sample.query
+        .filter_by(project_id=project.id)
+        .order_by(Sample.collection_date.desc(), Sample.client_sample_id.asc())
+        .all()
+    )
+    return render_template("projects/detail.html", project=project, samples=samples)
 
 
 VALID_PROJECT_STATUSES = ("active", "archived", "complete")

@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Sample: {{ sample.client_sample_id }}{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Edit Sample: {{ sample.client_sample_id }}</h1>
+    <a class="btn secondary" href="{{ url_for('samples.detail', sample_id=sample.id) }}">Cancel</a>
+  </div>
+
+  <form class="stacked" method="post" action="{{ url_for('samples.edit_save', sample_id=sample.id) }}">
+
+    <h2>Sample IDs</h2>
+    <div class="info-block">
+      <div class="field">
+        <label for="client_sample_id">Client Sample ID</label>
+        <input type="text" id="client_sample_id" name="client_sample_id" required value="{{ form.client_sample_id or '' }}">
+      </div>
+      <div class="field">
+        <label for="lab_sample_id">Lab Sample ID</label>
+        <input type="text" id="lab_sample_id" name="lab_sample_id" value="{{ form.lab_sample_id or '' }}">
+      </div>
+      <div class="field">
+        <label for="lab_workorder">Lab WorkOrder</label>
+        <input type="text" id="lab_workorder" name="lab_workorder" value="{{ form.lab_workorder or '' }}">
+      </div>
+      <div class="field">
+        <label for="matrix">Matrix</label>
+        <select id="matrix" name="matrix" required>
+          {% for option in matrix_options %}
+            <option value="{{ option }}" {% if option == form.matrix %}selected{% endif %}>{{ option }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 1.5rem;">Collection</h2>
+    <div class="info-block">
+      <div class="field">
+        <label for="collection_date">Collection Date (YYYY-MM-DD)</label>
+        <input type="text" id="collection_date" name="collection_date" placeholder="YYYY-MM-DD" value="{{ form.collection_date or '' }}">
+      </div>
+      <div class="field">
+        <label for="collection_time">Collection Time</label>
+        <input type="text" id="collection_time" name="collection_time" value="{{ form.collection_time or '' }}">
+      </div>
+      <div class="field">
+        <label for="collection_end_time">Collection End Time</label>
+        <input type="text" id="collection_end_time" name="collection_end_time" value="{{ form.collection_end_time or '' }}">
+      </div>
+      <div class="field">
+        <label for="sample_volume">Sample Volume</label>
+        <input type="text" id="sample_volume" name="sample_volume" value="{{ form.sample_volume or '' }}">
+      </div>
+      <div class="field">
+        <label for="pump_flow_rate">Pump Flow Rate</label>
+        <input type="text" id="pump_flow_rate" name="pump_flow_rate" value="{{ form.pump_flow_rate or '' }}">
+      </div>
+    </div>
+
+    <h2 style="margin-top: 1.5rem;">Personnel and Work Context</h2>
+    <p class="subtitle">For Personal Monitoring (PM) samples, capture who was being monitored, where they were working, and what they were doing. Fill in if not on the COC.</p>
+    <div class="info-block">
+      <div class="field">
+        <label for="employee_name">Employee Name</label>
+        <input type="text" id="employee_name" name="employee_name" value="{{ form.employee_name or '' }}">
+      </div>
+      <div class="field">
+        <label for="work_area">Work Area</label>
+        <input type="text" id="work_area" name="work_area" value="{{ form.work_area or '' }}">
+      </div>
+      <div class="field">
+        <label for="task_description">Task Description</label>
+        <textarea id="task_description" name="task_description" rows="3">{{ form.task_description or '' }}</textarea>
+      </div>
+    </div>
+
+    <h2 style="margin-top: 1.5rem;">Weather</h2>
+    <div class="info-block">
+      <div class="field">
+        <label for="weather_conditions">Weather Conditions</label>
+        <input type="text" id="weather_conditions" name="weather_conditions" value="{{ form.weather_conditions or '' }}">
+      </div>
+      <div class="field">
+        <label for="weather_temperature">Weather Temperature</label>
+        <input type="text" id="weather_temperature" name="weather_temperature" value="{{ form.weather_temperature or '' }}">
+      </div>
+      <div class="field">
+        <label for="wind_speed">Wind Speed</label>
+        <input type="text" id="wind_speed" name="wind_speed" value="{{ form.wind_speed or '' }}">
+      </div>
+      <div class="field">
+        <label for="wind_direction">Wind Direction</label>
+        <input type="text" id="wind_direction" name="wind_direction" value="{{ form.wind_direction or '' }}">
+      </div>
+    </div>
+
+    <h2 style="margin-top: 1.5rem;">Notes</h2>
+    <div class="info-block">
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="3">{{ form.notes or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 1.5rem;">
+      <button type="submit" class="btn">Save Changes</button>
+      <a class="btn secondary" href="{{ url_for('samples.detail', sample_id=sample.id) }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}

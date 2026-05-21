@@ -8,6 +8,7 @@ from routes.projects import projects_bp
 from routes.uploads import uploads_bp
 from routes.auth import auth_bp
 from routes.admin import admin_bp
+from routes.samples import samples_bp
 
 load_dotenv()
 
@@ -32,6 +33,7 @@ app.register_blueprint(projects_bp)
 app.register_blueprint(uploads_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
+app.register_blueprint(samples_bp)
 
 
 @app.route("/")

@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Sample: {{ sample.client_sample_id }}{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Sample: {{ sample.client_sample_id }}</h1>
+    <div style="display: flex; gap: 0.5rem;">
+      <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Back to Project</a>
+      <a class="btn" href="{{ url_for('samples.edit', sample_id=sample.id) }}">Edit Sample</a>
+    </div>
+  </div>
+
+  <h2>Sample Information</h2>
+  <div class="info-block">
+    <dl>
+      {% set fields = [
+        ('Client Sample ID', sample.client_sample_id),
+        ('Lab Sample ID', sample.lab_sample_id),
+        ('Lab WorkOrder', sample.lab_workorder),
+        ('Matrix', sample.matrix),
+        ('Collection Date', sample.collection_date.strftime("%Y-%m-%d") if sample.collection_date else None),
+        ('Collection Time', sample.collection_time),
+        ('Collection End Time', sample.collection_end_time),
+        ('Location Description', sample.location_description),
+        ('Sample Volume', sample.sample_volume),
+        ('Pump Flow Rate', sample.pump_flow_rate),
+        ('Employee Name', sample.employee_name),
+        ('Work Area', sample.work_area),
+        ('Task Description', sample.task_description),
+        ('Wind Speed', sample.wind_speed),
+        ('Wind Direction', sample.wind_direction),
+        ('Weather Conditions', sample.weather_conditions),
+        ('Weather Temperature', sample.weather_temperature),
+        ('Notes', sample.notes),
+        ('Created', sample.created_at.strftime("%Y-%m-%d %H:%M") if sample.created_at else None),
+        ('Updated', sample.updated_at.strftime("%Y-%m-%d %H:%M") if sample.updated_at else None),
+      ] %}
+      {% for label, value in fields %}
+        {% if value not in (None, "") %}
+          <dt>{{ label }}</dt><dd>{{ value }}</dd>
+        {% endif %}
+      {% endfor %}
+    </dl>
+  </div>
+
+  <h2>Analytical Results</h2>
+  {% if results %}
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Analyte</th>
+          <th>Result</th>
+          <th>Units</th>
+          <th>RL</th>
+          <th>DF</th>
+          <th>Method</th>
+          <th>Date Analyzed</th>
+          <th>8-hr TWA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+          <tr>
+            <td>{{ r.analyte }}</td>
+            <td>{{ r.result_value }}</td>
+            <td>{{ r.result_units or "—" }}</td>
+            <td>{{ r.reporting_limit or "—" }}</td>
+            <td>{{ r.dilution_factor or "—" }}</td>
+            <td>{{ r.method_reference or "—" }}</td>
+            <td>{{ r.date_analyzed.strftime("%Y-%m-%d %H:%M") if r.date_analyzed else "—" }}</td>
+            <td>{{ r.twa_8hr if r.twa_8hr is not none else "—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p style="color: var(--muted);">No analytical results recorded for this sample.</p>
+  {% endif %}
+{% endblock %}
