@@ -64,6 +64,7 @@ class Sample(db.Model):
     matrix = db.Column(db.String(50), nullable=False)
     collection_date = db.Column(db.Date, nullable=True)
     collection_time = db.Column(db.String(20), nullable=True)
+    collection_start_time = db.Column(db.String(20), nullable=True)
     collection_end_time = db.Column(db.String(20), nullable=True)
     location_description = db.Column(db.Text, nullable=True)
     sample_volume = db.Column(db.String(50), nullable=True)

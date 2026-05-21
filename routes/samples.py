@@ -172,6 +172,7 @@ def edit_save(sample_id):
         "matrix": (request.form.get("matrix") or "").strip(),
         "collection_date": (request.form.get("collection_date") or "").strip(),
         "collection_time": (request.form.get("collection_time") or "").strip(),
+        "collection_start_time": (request.form.get("collection_start_time") or "").strip(),
         "collection_end_time": (request.form.get("collection_end_time") or "").strip(),
         "sample_volume": (request.form.get("sample_volume") or "").strip(),
         "pump_flow_rate": (request.form.get("pump_flow_rate") or "").strip(),
@@ -206,6 +207,7 @@ def edit_save(sample_id):
     sample.matrix = form["matrix"]
     sample.collection_date = collection_date
     sample.collection_time = form["collection_time"] or None
+    sample.collection_start_time = form["collection_start_time"] or None
     sample.collection_end_time = form["collection_end_time"] or None
     sample.sample_volume = form["sample_volume"] or None
     sample.pump_flow_rate = form["pump_flow_rate"] or None
@@ -231,6 +233,7 @@ def _form_from_sample(sample):
         "matrix": sample.matrix or "",
         "collection_date": sample.collection_date.strftime("%Y-%m-%d") if sample.collection_date else "",
         "collection_time": sample.collection_time or "",
+        "collection_start_time": sample.collection_start_time or "",
         "collection_end_time": sample.collection_end_time or "",
         "sample_volume": sample.sample_volume or "",
         "pump_flow_rate": sample.pump_flow_rate or "",

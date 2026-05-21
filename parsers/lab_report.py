@@ -1,13 +1,33 @@
+import base64
 import json
 import os
 import re
 from typing import Optional
 
 import anthropic
-import pdfplumber
 
 
 PROJECT_NUMBER_RE = re.compile(r"(\d{1,3}-\d{4})")
+
+
+# Sample-ID prefix codes used by CCC's naming conventions. Detected at the
+# start, middle (between dashes), or end of a client sample ID.
+#
+# Test cases the regex needs to handle:
+#   - prefix at start:  "AM-001"
+#   - middle:           "1633-AM-001"
+#   - end:              "1633-001-AM", "1633-26-2026-PM"
+PREFIX_MAP = {
+    "AM": "Area Air",
+    "PM": "Personal Air",
+    "SS": "Soil",
+    "ES": "Excavated Soil",
+    "WW": "Liquid",
+    "PC": "Paint Chip",
+    "WS": "Wipe",
+}
+
+PREFIX_RE = re.compile(r"(?:^|-)([A-Za-z]{2})(?:-|$)")
 
 
 MATRIX_OPTIONS = [
@@ -43,8 +63,10 @@ SCHEMA_DESCRIPTION = """\
       "lab_sample_id": "Sample ID assigned by the lab (string)",
       "matrix_raw": "Matrix as printed on the report (string, e.g. 'Air', 'Soil', 'Water', 'Wipe', 'Spent Abrasive', 'Paint Chip')",
       "collection_date": "Date the sample was collected (string, format as printed) or null",
-      "collection_time": "Time the sample was collected (string) or null",
+      "collection_start_time": "Start time of sampling in HH:MM (string) or null. For Air samples, prefer the value from the handwritten chain-of-custody (COC) form.",
+      "collection_end_time": "End time of sampling in HH:MM (string) or null. Typically present on both the analytical report and the COC.",
       "sample_volume": "Volume / amount of sample with units (string) or null",
+      "pump_flow_rate": "Air flow rate for Air samples with units (string, e.g. '2 L/min' or '2.0 L/min') or null. Look on the handwritten COC.",
       "method": "Analytical method reference (string, e.g. 'N7303m', 'SW6020') or null",
       "units": "Default units for results in this sample (string) or null",
       "results": [
@@ -63,15 +85,54 @@ SCHEMA_DESCRIPTION = """\
 """
 
 
+USER_PROMPT = (
+    "Extract the structured lab report data from the attached PDF into a JSON "
+    "object that matches this schema (treat the schema values as field "
+    "descriptions, not literal output):\n\n"
+    f"{SCHEMA_DESCRIPTION}\n\n"
+    "Important guidance:\n"
+    "- Read ALL pages of the PDF, including any handwritten chain-of-custody "
+    "(COC) form. The COC is usually on the last page or two, often handwritten, "
+    "and is the source of truth for sampling times and pump flow rate.\n"
+    "- For Air samples (Area Air or Personal Air), extract from the COC: "
+    "the sampling start time, the sampling end time, and the air flow rate "
+    "(typically written as '2 L/min' or '2.0 L/min').\n"
+    "- The lab's analytical report often shows only one timestamp (the end "
+    "time). When start and end times differ between the COC and the analytical "
+    "report, prefer the COC for the start time.\n"
+    "- pump_flow_rate should include the units exactly as printed.\n"
+    "- collection_start_time and collection_end_time should be in HH:MM format "
+    "(24-hour preferred) if possible; otherwise return the printed text.\n"
+    "Return ONLY the JSON object."
+)
+
+
+def _detect_prefix_matrix(client_sample_id: Optional[str]) -> Optional[str]:
+    """Find the first 2-letter matrix prefix code in the sample ID."""
+    if not client_sample_id:
+        return None
+    for match in PREFIX_RE.finditer(client_sample_id.upper()):
+        code = match.group(1)
+        if code in PREFIX_MAP:
+            return PREFIX_MAP[code]
+    return None
+
+
 def map_matrix(matrix_raw: Optional[str], client_sample_id: Optional[str]) -> str:
     raw_lower = (matrix_raw or "").strip().lower()
-    csid = (client_sample_id or "").upper()
+    prefix_matrix = _detect_prefix_matrix(client_sample_id)
 
+    # Sample-ID prefix is the strongest signal when present.
+    if prefix_matrix:
+        # AM/PM only make sense if the raw matrix is air-ish (or unspecified).
+        if prefix_matrix in ("Area Air", "Personal Air"):
+            if "air" in raw_lower or not raw_lower:
+                return prefix_matrix
+        else:
+            return prefix_matrix
+
+    # Fall back to matrix_raw text inspection.
     if "air" in raw_lower:
-        if "-AM-" in csid or csid.startswith("AM-"):
-            return "Area Air"
-        if "-PM-" in csid or csid.startswith("PM-"):
-            return "Personal Air"
         return "Area Air"
     if "soil" in raw_lower:
         return "Soil"
@@ -103,17 +164,18 @@ def parse_lab_report(file_path):
         return result
 
     try:
-        pdf_text = _extract_pdf_text(file_path)
+        with open(file_path, "rb") as f:
+            pdf_bytes = f.read()
     except Exception as exc:
-        result["errors"].append(f"PDF extraction error: {type(exc).__name__}: {exc}")
+        result["errors"].append(f"PDF read error: {type(exc).__name__}: {exc}")
         return result
 
-    if not pdf_text.strip():
-        result["errors"].append("PDF appears to contain no extractable text")
+    if not pdf_bytes:
+        result["errors"].append("PDF file is empty")
         return result
 
     try:
-        parsed = _call_claude(api_key, pdf_text)
+        parsed = _call_claude(api_key, pdf_bytes)
     except anthropic.APIError as exc:
         result["errors"].append(f"Claude API error: {type(exc).__name__}: {exc}")
         return result
@@ -151,33 +213,31 @@ def _extract_project_name(project_text: Optional[str]) -> Optional[str]:
     return after or None
 
 
-def _extract_pdf_text(file_path):
-    pages = []
-    with pdfplumber.open(file_path) as pdf:
-        for page in pdf.pages:
-            pages.append(page.extract_text() or "")
-    return "\n".join(pages)
-
-
-def _call_claude(api_key, pdf_text):
+def _call_claude(api_key, pdf_bytes):
     client = anthropic.Anthropic(api_key=api_key)
-
-    user_message = (
-        "Extract the structured lab report data from the text below into a JSON object "
-        "that matches this schema (treat the schema values as field descriptions, not literal output):\n\n"
-        f"{SCHEMA_DESCRIPTION}\n\n"
-        "Lab report text:\n"
-        "---\n"
-        f"{pdf_text}\n"
-        "---\n\n"
-        "Return ONLY the JSON object."
-    )
+    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode("ascii")
 
     with client.messages.stream(
         model="claude-sonnet-4-6",
-        max_tokens=16000,
+        max_tokens=64000,
         system=SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_message}],
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "document",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "application/pdf",
+                        "data": pdf_b64,
+                    },
+                },
+                {
+                    "type": "text",
+                    "text": USER_PROMPT,
+                },
+            ],
+        }],
     ) as stream:
         final = stream.get_final_message()
 
@@ -210,8 +270,10 @@ def _normalize_samples(samples_in):
             "matrix_raw": matrix_raw,
             "matrix": map_matrix(matrix_raw, client_sample_id),
             "collection_date": sample.get("collection_date"),
-            "collection_time": sample.get("collection_time"),
+            "collection_start_time": sample.get("collection_start_time"),
+            "collection_end_time": sample.get("collection_end_time"),
             "sample_volume": sample.get("sample_volume"),
+            "pump_flow_rate": sample.get("pump_flow_rate"),
             "method": sample.get("method"),
             "units": sample.get("units"),
             "results": [],

@@ -41,12 +41,16 @@
         <input type="text" id="collection_date" name="collection_date" placeholder="YYYY-MM-DD" value="{{ form.collection_date or '' }}">
       </div>
       <div class="field">
-        <label for="collection_time">Collection Time</label>
-        <input type="text" id="collection_time" name="collection_time" value="{{ form.collection_time or '' }}">
+        <label for="collection_start_time">Collection Start Time</label>
+        <input type="text" id="collection_start_time" name="collection_start_time" placeholder="HH:MM" value="{{ form.collection_start_time or '' }}">
       </div>
       <div class="field">
         <label for="collection_end_time">Collection End Time</label>
-        <input type="text" id="collection_end_time" name="collection_end_time" value="{{ form.collection_end_time or '' }}">
+        <input type="text" id="collection_end_time" name="collection_end_time" placeholder="HH:MM" value="{{ form.collection_end_time or '' }}">
+      </div>
+      <div class="field">
+        <label for="collection_time">Collection Time (legacy)</label>
+        <input type="text" id="collection_time" name="collection_time" value="{{ form.collection_time or '' }}">
       </div>
       <div class="field">
         <label for="sample_volume">Sample Volume</label>

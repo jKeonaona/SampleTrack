@@ -115,6 +115,7 @@ def _process_uploaded_file(uploaded):
                 continue
 
             matrix = (sample_data.get("matrix") or "Other").strip() or "Other"
+            end_time = sample_data.get("collection_end_time") or sample_data.get("collection_time")
             sample = Sample(
                 project_id=project.id,
                 client_sample_id=client_sample_id,
@@ -122,8 +123,11 @@ def _process_uploaded_file(uploaded):
                 lab_workorder=workorder,
                 matrix=matrix,
                 collection_date=_parse_date(sample_data.get("collection_date")),
-                collection_time=sample_data.get("collection_time"),
+                collection_time=end_time,
+                collection_start_time=sample_data.get("collection_start_time"),
+                collection_end_time=end_time,
                 sample_volume=sample_data.get("sample_volume"),
+                pump_flow_rate=sample_data.get("pump_flow_rate"),
             )
             db.session.add(sample)
             db.session.flush()
