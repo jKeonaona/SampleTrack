@@ -45,6 +45,50 @@ def upload():
     if project_number:
         existing_project = Project.query.filter_by(project_number=project_number).first()
 
+    workorder = parser_data.get("workorder")
+    workorder_exists = False
+    existing_workorder_samples = []
+    if workorder:
+        matches = (
+            Sample.query
+            .filter_by(lab_workorder=workorder)
+            .limit(5)
+            .all()
+        )
+        if matches:
+            workorder_exists = True
+            for m in matches:
+                existing_workorder_samples.append({
+                    "client_sample_id": m.client_sample_id,
+                    "project_number": m.project.project_number if m.project else None,
+                    "project_id": m.project_id,
+                    "collection_date": m.collection_date.strftime("%Y-%m-%d") if m.collection_date else None,
+                })
+
+    samples = parser_data.get("samples") or []
+    if existing_project is not None:
+        for s in samples:
+            csid = s.get("client_sample_id")
+            if not csid:
+                s["client_id_conflict"] = False
+                continue
+            existing = Sample.query.filter_by(
+                project_id=existing_project.id,
+                client_sample_id=csid,
+            ).first()
+            if existing is not None:
+                s["client_id_conflict"] = True
+                s["existing_sample"] = {
+                    "id": existing.id,
+                    "lab_workorder": existing.lab_workorder,
+                    "collection_date": existing.collection_date.strftime("%Y-%m-%d") if existing.collection_date else None,
+                }
+            else:
+                s["client_id_conflict"] = False
+    else:
+        for s in samples:
+            s["client_id_conflict"] = False
+
     parser_data_json = json.dumps(parser_data)
     return render_template(
         "uploads/dump_confirm.html",
@@ -53,6 +97,8 @@ def upload():
         matrix_options=MATRIX_OPTIONS,
         existing_project=existing_project,
         project_exists=existing_project is not None,
+        workorder_exists=workorder_exists,
+        existing_workorder_samples=existing_workorder_samples,
     )
 
 
@@ -90,14 +136,25 @@ def save():
     workorder = parser_data.get("workorder")
     samples_in = parser_data.get("samples") or []
 
-    sample_count = 0
+    saved_count = 0
     result_count = 0
+    skipped_count = 0
     for idx, sample_data in enumerate(samples_in):
         matrix = (request.form.get(f"matrix_{idx}") or sample_data.get("matrix") or "Other").strip()
+        client_sample_id = (sample_data.get("client_sample_id") or sample_data.get("lab_sample_id") or "UNKNOWN")
+        save_anyway = request.form.get(f"save_anyway_{idx}") == "on"
+
+        duplicate = Sample.query.filter_by(
+            project_id=project.id,
+            client_sample_id=client_sample_id,
+        ).first()
+        if duplicate is not None and not save_anyway:
+            skipped_count += 1
+            continue
 
         sample = Sample(
             project_id=project.id,
-            client_sample_id=(sample_data.get("client_sample_id") or sample_data.get("lab_sample_id") or "UNKNOWN"),
+            client_sample_id=client_sample_id,
             lab_sample_id=sample_data.get("lab_sample_id"),
             lab_workorder=workorder,
             matrix=matrix,
@@ -107,7 +164,7 @@ def save():
         )
         db.session.add(sample)
         db.session.flush()
-        sample_count += 1
+        saved_count += 1
 
         for r_data in sample_data.get("results") or []:
             analyte = (r_data.get("analyte") or "").strip()
@@ -129,8 +186,8 @@ def save():
             result_count += 1
 
     db.session.commit()
-    flash(
-        f"Saved {sample_count} samples and {result_count} results to project {project_number}.",
-        "success",
-    )
+    msg = f"Saved {saved_count} samples and {result_count} results to project {project_number}."
+    if skipped_count > 0:
+        msg += f" Skipped {skipped_count} duplicate sample(s)."
+    flash(msg, "success")
     return redirect(url_for("projects.detail", project_id=project.id))

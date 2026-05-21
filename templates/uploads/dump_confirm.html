@@ -8,6 +8,38 @@
     <a class="btn secondary" href="{{ url_for('uploads.dump') }}">Cancel</a>
   </div>
 
+  {% if workorder_exists %}
+    <div style="border: 1px solid #f59e0b; background: #fef3c7; padding: 0.85rem 1rem; border-radius: 6px; margin-bottom: 1rem; color: #78350f;">
+      <strong>Heads up:</strong> WorkOrder {{ parser_data.workorder }} already has samples in the database. This may be a re-upload of a previously processed report.
+      {% if existing_workorder_samples %}
+        <table class="data" style="margin-top: 0.75rem; background: #fffbeb;">
+          <thead>
+            <tr>
+              <th>Client Sample ID</th>
+              <th>Project</th>
+              <th>Collection Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in existing_workorder_samples %}
+              <tr>
+                <td>{{ s.client_sample_id }}</td>
+                <td>
+                  {% if s.project_number and s.project_id %}
+                    <a href="{{ url_for('projects.detail', project_id=s.project_id) }}">{{ s.project_number }}</a>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>{{ s.collection_date or "—" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+  {% endif %}
+
   <div class="info-block">
     <dl>
       <dt>Detected Project Number</dt>
@@ -48,6 +80,19 @@
     {% for sample in parser_data.samples %}
       <div class="info-block" style="margin-top: 1.25rem;">
         <h2 style="margin-top: 0;">Sample {{ loop.index }}: {{ sample.client_sample_id or sample.lab_sample_id or "(unidentified)" }}</h2>
+
+        {% if sample.client_id_conflict %}
+          <div style="border: 1px solid #f59e0b; background: #fef3c7; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; color: #78350f;">
+            <strong>Duplicate detected:</strong>
+            A sample with Client Sample ID '{{ sample.client_sample_id }}' already exists in this project
+            (WorkOrder {{ sample.existing_sample.lab_workorder or "?" }}, collected {{ sample.existing_sample.collection_date or "?" }}).
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
+              <input type="checkbox" name="save_anyway_{{ loop.index0 }}">
+              <span>Save anyway as a separate record</span>
+            </label>
+          </div>
+        {% endif %}
+
         <dl>
           <dt>Client Sample ID</dt><dd>{{ sample.client_sample_id or "—" }}</dd>
           <dt>Lab Sample ID</dt><dd>{{ sample.lab_sample_id or "—" }}</dd>
