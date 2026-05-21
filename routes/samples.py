@@ -4,6 +4,7 @@ from flask_login import login_required
 from models import db, Sample
 from parsers.lab_report import MATRIX_OPTIONS
 from routes.projects import _parse_date
+from utils.calculations import evaluate_result
 
 samples_bp = Blueprint("samples", __name__)
 
@@ -13,11 +14,13 @@ samples_bp = Blueprint("samples", __name__)
 def detail(sample_id):
     sample = Sample.query.get_or_404(sample_id)
     results = sorted(sample.results, key=lambda r: (r.analyte or "").lower())
+    result_evaluations = {r.id: evaluate_result(sample, r) for r in results}
     return render_template(
         "samples/detail.html",
         sample=sample,
         project=sample.project,
         results=results,
+        result_evaluations=result_evaluations,
     )
 
 

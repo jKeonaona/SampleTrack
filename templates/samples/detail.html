@@ -44,6 +44,15 @@
     </dl>
   </div>
 
+  {% set flag_labels = {
+    "exceeded": "Exceeded",
+    "warning": "Action Level",
+    "ok": "OK",
+    "no_thresholds": "—",
+    "no_value": "No value",
+    "no_results": "No results",
+  } %}
+
   <h2>Analytical Results</h2>
   {% if results %}
     <table class="data">
@@ -57,10 +66,12 @@
           <th>Method</th>
           <th>Date Analyzed</th>
           <th>8-hr TWA</th>
+          <th>Flag</th>
         </tr>
       </thead>
       <tbody>
         {% for r in results %}
+          {% set ev = result_evaluations.get(r.id) %}
           <tr>
             <td>{{ r.analyte }}</td>
             <td>{{ r.result_value }}</td>
@@ -69,12 +80,77 @@
             <td>{{ r.dilution_factor or "—" }}</td>
             <td>{{ r.method_reference or "—" }}</td>
             <td>{{ r.date_analyzed.strftime("%Y-%m-%d %H:%M") if r.date_analyzed else "—" }}</td>
-            <td>{{ r.twa_8hr if r.twa_8hr is not none else "—" }}</td>
+            <td>
+              {% if ev and ev.comparison_basis == "8-hr TWA" and ev.comparison_value is not none %}
+                {{ ev.comparison_value }} {{ ev.comparison_units or "" }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if ev %}
+                <span class="flag-pill {{ ev.overall_status }}">{{ flag_labels.get(ev.overall_status, ev.overall_status) }}</span>
+              {% else %}
+                —
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
       </tbody>
     </table>
   {% else %}
     <p style="color: var(--muted);">No analytical results recorded for this sample.</p>
+  {% endif %}
+
+  {% set ns = namespace(has_any=False) %}
+  {% for r in results %}
+    {% set ev = result_evaluations.get(r.id) %}
+    {% if ev and ev.evaluations %}
+      {% set ns.has_any = True %}
+    {% endif %}
+  {% endfor %}
+
+  {% if ns.has_any %}
+    <h2>Threshold Evaluations</h2>
+    {% for r in results %}
+      {% set ev = result_evaluations.get(r.id) %}
+      {% if ev and ev.evaluations %}
+        <h3 style="margin-top: 1.25rem;">
+          {{ r.analyte }} — {{ ev.comparison_basis }}: {{ ev.comparison_value }} {{ ev.comparison_units or "" }}
+        </h3>
+        <table class="data">
+          <thead>
+            <tr>
+              <th>Threshold</th>
+              <th>Regulatory Body</th>
+              <th>Limit</th>
+              <th>% of Limit</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in ev.evaluations %}
+              <tr>
+                <td>{{ item.threshold.threshold_name }}</td>
+                <td>{{ item.threshold.regulatory_body }}</td>
+                <td>{{ item.threshold.value }} {{ item.threshold.units }}</td>
+                <td>{{ "%.1f"|format(item.ratio * 100) }}%</td>
+                <td>
+                  {% if item.exceeded %}
+                    {% if "Action Level" in item.threshold.threshold_name %}
+                      <span class="flag-pill warning">Action Level</span>
+                    {% else %}
+                      <span class="flag-pill exceeded">Exceeded</span>
+                    {% endif %}
+                  {% else %}
+                    <span class="flag-pill ok">Below</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+    {% endfor %}
   {% endif %}
 {% endblock %}

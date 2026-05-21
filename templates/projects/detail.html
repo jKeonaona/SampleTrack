@@ -29,6 +29,14 @@
   </div>
 
   {% if samples %}
+    {% set flag_labels = {
+      "exceeded": "Exceeded",
+      "warning": "Action Level",
+      "ok": "OK",
+      "no_thresholds": "—",
+      "no_value": "No value",
+      "no_results": "No results",
+    } %}
     <table class="data">
       <thead>
         <tr>
@@ -38,10 +46,12 @@
           <th>Collection Date</th>
           <th>Sample Volume</th>
           <th>Results</th>
+          <th>Status</th>
         </tr>
       </thead>
       <tbody>
         {% for s in samples %}
+          {% set status = sample_statuses.get(s.id, "no_results") %}
           <tr>
             <td><a href="{{ url_for('samples.detail', sample_id=s.id) }}">{{ s.client_sample_id }}</a></td>
             <td>{{ s.lab_sample_id or "—" }}</td>
@@ -49,6 +59,7 @@
             <td>{{ s.collection_date.strftime("%Y-%m-%d") if s.collection_date else "—" }}</td>
             <td>{{ s.sample_volume or "—" }}</td>
             <td>{{ s.results|length }}</td>
+            <td><span class="flag-pill {{ status }}">{{ flag_labels.get(status, status) }}</span></td>
           </tr>
         {% endfor %}
       </tbody>

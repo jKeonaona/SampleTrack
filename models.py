@@ -84,6 +84,23 @@ class Sample(db.Model):
     results = db.relationship("Result", backref="sample", cascade="all, delete-orphan")
 
 
+class Threshold(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    analyte = db.Column(db.String(100), nullable=False, index=True)
+    matrix = db.Column(db.String(50), nullable=False, index=True)
+    threshold_name = db.Column(db.String(100), nullable=False)
+    regulatory_body = db.Column(db.String(50), nullable=False)
+    value = db.Column(db.Float, nullable=False)
+    units = db.Column(db.String(20), nullable=False)
+    notes = db.Column(db.Text, nullable=True)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index("ix_threshold_analyte_matrix", "analyte", "matrix"),
+    )
+
+
 class Result(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sample_id = db.Column(db.Integer, db.ForeignKey("sample.id"), nullable=False, index=True)
