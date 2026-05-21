@@ -12,6 +12,23 @@ from routes.projects import _parse_date, _parse_datetime, _parse_numeric
 uploads_bp = Blueprint("uploads", __name__, url_prefix="/upload")
 
 
+def _parsed_sample_methods(sample_dict):
+    methods = set()
+    sample_method = sample_dict.get("method")
+    if sample_method:
+        methods.add(sample_method)
+    for r in sample_dict.get("results") or []:
+        if isinstance(r, dict):
+            rm = r.get("method")
+            if rm:
+                methods.add(rm)
+    return methods
+
+
+def _existing_sample_methods(sample_obj):
+    return {r.method_reference for r in sample_obj.results if r.method_reference}
+
+
 @uploads_bp.route("/", methods=["GET"])
 @login_required
 def dump():
@@ -72,16 +89,28 @@ def upload():
             if not csid:
                 s["client_id_conflict"] = False
                 continue
-            existing = Sample.query.filter_by(
+
+            parsed_methods = _parsed_sample_methods(s)
+            existing_matches = Sample.query.filter_by(
                 project_id=existing_project.id,
                 client_sample_id=csid,
-            ).first()
-            if existing is not None:
+            ).all()
+
+            conflict = None
+            for existing in existing_matches:
+                overlap = parsed_methods & _existing_sample_methods(existing)
+                if overlap:
+                    conflict = (existing, overlap)
+                    break
+
+            if conflict is not None:
+                existing, overlap = conflict
                 s["client_id_conflict"] = True
                 s["existing_sample"] = {
                     "id": existing.id,
                     "lab_workorder": existing.lab_workorder,
                     "collection_date": existing.collection_date.strftime("%Y-%m-%d") if existing.collection_date else None,
+                    "methods": sorted(overlap),
                 }
             else:
                 s["client_id_conflict"] = False
@@ -144,11 +173,16 @@ def save():
         client_sample_id = (sample_data.get("client_sample_id") or sample_data.get("lab_sample_id") or "UNKNOWN")
         save_anyway = request.form.get(f"save_anyway_{idx}") == "on"
 
-        duplicate = Sample.query.filter_by(
+        parsed_methods = _parsed_sample_methods(sample_data)
+        existing_matches = Sample.query.filter_by(
             project_id=project.id,
             client_sample_id=client_sample_id,
-        ).first()
-        if duplicate is not None and not save_anyway:
+        ).all()
+        has_overlap = any(
+            parsed_methods & _existing_sample_methods(existing)
+            for existing in existing_matches
+        )
+        if has_overlap and not save_anyway:
             skipped_count += 1
             continue
 

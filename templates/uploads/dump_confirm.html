@@ -84,8 +84,9 @@
         {% if sample.client_id_conflict %}
           <div style="border: 1px solid #f59e0b; background: #fef3c7; padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; color: #78350f;">
             <strong>Duplicate detected:</strong>
-            A sample with Client Sample ID '{{ sample.client_sample_id }}' already exists in this project
-            (WorkOrder {{ sample.existing_sample.lab_workorder or "?" }}, collected {{ sample.existing_sample.collection_date or "?" }}).
+            A sample with Client Sample ID '{{ sample.client_sample_id }}' already exists in this project with overlapping analytical method(s): {{ sample.existing_sample.methods|join(', ') }}
+            (existing WorkOrder {{ sample.existing_sample.lab_workorder or "?" }}, collected {{ sample.existing_sample.collection_date or "?" }}).
+            This may be a re-upload of the same test.
             <label style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem;">
               <input type="checkbox" name="save_anyway_{{ loop.index0 }}">
               <span>Save anyway as a separate record</span>
