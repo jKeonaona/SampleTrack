@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Summary{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Upload Summary</h1>
+  </div>
+
+  {% if failed_files %}
+    <div style="border: 1px solid var(--danger); background: #fdecea; color: var(--danger); padding: 0.85rem 1rem; border-radius: 6px; margin-bottom: 1rem;">
+      <strong>{{ failed_files|length }} file(s) failed to process.</strong>
+      Review the list below and try uploading those individually.
+      <a href="{{ url_for('uploads.dump') }}" style="color: var(--danger); text-decoration: underline;">Back to upload</a>.
+    </div>
+  {% endif %}
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Files Processed</div>
+      <div class="value">{{ saved_files|length + failed_files|length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Samples Saved</div>
+      <div class="value">{{ total_samples_saved }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Results Saved</div>
+      <div class="value">{{ total_results_saved }}</div>
+    </div>
+    <div class="stat-card"{% if total_duplicates_skipped > 0 %} style="background: #fef3c7; border-color: #fcd34d;"{% endif %}>
+      <div class="label">Duplicates Skipped</div>
+      <div class="value">{{ total_duplicates_skipped }}</div>
+    </div>
+    <div class="stat-card"{% if failed_files|length > 0 %} style="background: #fef2f2; border-color: #fca5a5;"{% endif %}>
+      <div class="label">Files Failed</div>
+      <div class="value">{{ failed_files|length }}</div>
+    </div>
+  </div>
+
+  {% if auto_created_projects %}
+    <h2>Auto-Created Projects</h2>
+    <div class="info-block">
+      <ul style="margin: 0; padding-left: 1.5rem;">
+        {% for p in auto_created_projects %}
+          <li>
+            <a href="{{ url_for('projects.detail', project_id=p.id) }}">{{ p.project_number }}</a>
+            — {{ p.name }}
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  {% if saved_files %}
+    <h2>Successfully Processed Files</h2>
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Filename</th>
+          <th>Project</th>
+          <th>Status</th>
+          <th>Samples Saved</th>
+          <th>Duplicates Skipped</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in saved_files %}
+          <tr>
+            <td>{{ f.filename }}</td>
+            <td>
+              <a href="{{ url_for('projects.detail', project_id=f.project_id) }}">{{ f.project_number }}</a>
+              — {{ f.project_name }}
+            </td>
+            <td>
+              {% if f.was_auto_created %}
+                <span class="flag-pill ok">Created</span>
+              {% else %}
+                <span class="flag-pill" style="background: #dbeafe; color: #1e40af; border-color: #93c5fd;">Updated</span>
+              {% endif %}
+            </td>
+            <td>{{ f.samples_saved }}</td>
+            <td>{{ f.duplicates_skipped }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  {% if failed_files %}
+    <h2 style="margin-top: 1.5rem;">Failed Files</h2>
+    <table class="data" style="border-color: #fca5a5;">
+      <thead style="background: #fef2f2;">
+        <tr>
+          <th>Filename</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in failed_files %}
+          <tr>
+            <td>{{ f.filename }}</td>
+            <td>{{ f.reason }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+
+  <div class="actions" style="margin-top: 1.5rem;">
+    <a class="btn" href="{{ url_for('uploads.dump') }}">Upload More</a>
+    <a class="btn secondary" href="{{ url_for('projects.list_projects') }}">View All Projects</a>
+  </div>
+{% endblock %}

@@ -1,18 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Upload Lab Report{% endblock %}
+{% block title %}Upload Lab Reports{% endblock %}
 
 {% block content %}
-  <h1>Upload Lab Report</h1>
-  <p class="subtitle">Drop a lab report PDF here. The system reads the project number from the PDF and routes samples to the right project, creating new projects automatically when needed.</p>
+  <h1>Upload Lab Reports</h1>
+  <p class="subtitle">Drop one or more lab report PDFs here. The system parses each PDF, routes samples to the right project, and creates new projects automatically when needed.</p>
 
   <form class="stacked" method="post" enctype="multipart/form-data" action="{{ url_for('uploads.upload') }}">
     <div class="field">
-      <label for="report_pdf">Lab Report PDF</label>
-      <input type="file" id="report_pdf" name="report_pdf" accept="application/pdf,.pdf" required>
+      <label for="files">Lab Report PDFs</label>
+      <input type="file" id="files" name="files" multiple accept="application/pdf,.pdf" required>
+      <p style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">Select multiple PDFs at once for bulk processing. For best results, upload 10 or fewer files in a single batch.</p>
     </div>
     <div class="actions">
-      <button type="submit" class="btn">Upload &amp; Parse</button>
+      <button type="submit" class="btn">Upload All</button>
     </div>
   </form>
 

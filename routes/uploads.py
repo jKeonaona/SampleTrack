@@ -38,96 +38,160 @@ def dump():
 @uploads_bp.route("/", methods=["POST"])
 @login_required
 def upload():
-    uploaded = request.files.get("report_pdf")
-    if uploaded is None or not uploaded.filename:
-        flash("Please choose a PDF to upload.", "error")
-        return redirect(url_for("uploads.dump"))
-    if not uploaded.filename.lower().endswith(".pdf"):
-        flash("Only PDF files are accepted.", "error")
+    files = [f for f in request.files.getlist("files") if f and f.filename]
+    if not files:
+        flash("Select at least one PDF to upload.", "error")
         return redirect(url_for("uploads.dump"))
 
-    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
-    os.close(tmp_fd)
-    try:
-        uploaded.save(tmp_path)
-        parser_data = parse_lab_report(tmp_path)
-    finally:
+    saved_files = []
+    failed_files = []
+    auto_created_projects = []
+    total_samples_saved = 0
+    total_results_saved = 0
+    total_duplicates_skipped = 0
+
+    for uploaded in files:
+        filename = uploaded.filename
+        if not filename.lower().endswith(".pdf"):
+            failed_files.append({"filename": filename, "reason": "Not a PDF file."})
+            continue
+
+        tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+        os.close(tmp_fd)
         try:
-            os.remove(tmp_path)
-        except OSError:
-            pass
+            uploaded.save(tmp_path)
 
-    project_number = parser_data.get("project_number")
-    existing_project = None
-    if project_number:
-        existing_project = Project.query.filter_by(project_number=project_number).first()
-
-    workorder = parser_data.get("workorder")
-    workorder_exists = False
-    existing_workorder_samples = []
-    if workorder:
-        matches = (
-            Sample.query
-            .filter_by(lab_workorder=workorder)
-            .limit(5)
-            .all()
-        )
-        if matches:
-            workorder_exists = True
-            for m in matches:
-                existing_workorder_samples.append({
-                    "client_sample_id": m.client_sample_id,
-                    "project_number": m.project.project_number if m.project else None,
-                    "project_id": m.project_id,
-                    "collection_date": m.collection_date.strftime("%Y-%m-%d") if m.collection_date else None,
+            try:
+                parser_data = parse_lab_report(tmp_path)
+            except Exception as exc:
+                failed_files.append({
+                    "filename": filename,
+                    "reason": f"Parse error: {type(exc).__name__}: {exc}",
                 })
-
-    samples = parser_data.get("samples") or []
-    if existing_project is not None:
-        for s in samples:
-            csid = s.get("client_sample_id")
-            if not csid:
-                s["client_id_conflict"] = False
                 continue
 
-            parsed_methods = _parsed_sample_methods(s)
-            existing_matches = Sample.query.filter_by(
-                project_id=existing_project.id,
-                client_sample_id=csid,
-            ).all()
+            project_number = (parser_data.get("project_number") or "").strip()
+            if not project_number:
+                failed_files.append({
+                    "filename": filename,
+                    "reason": "No project number detected in PDF.",
+                })
+                continue
 
-            conflict = None
-            for existing in existing_matches:
-                overlap = parsed_methods & _existing_sample_methods(existing)
-                if overlap:
-                    conflict = (existing, overlap)
-                    break
+            samples_in = parser_data.get("samples") or []
+            if not samples_in:
+                failed_files.append({
+                    "filename": filename,
+                    "reason": "No samples extracted from PDF.",
+                })
+                continue
 
-            if conflict is not None:
-                existing, overlap = conflict
-                s["client_id_conflict"] = True
-                s["existing_sample"] = {
-                    "id": existing.id,
-                    "lab_workorder": existing.lab_workorder,
-                    "collection_date": existing.collection_date.strftime("%Y-%m-%d") if existing.collection_date else None,
-                    "methods": sorted(overlap),
-                }
-            else:
-                s["client_id_conflict"] = False
-    else:
-        for s in samples:
-            s["client_id_conflict"] = False
+            project_name = (parser_data.get("project_name") or "").strip()
+            project = Project.query.filter_by(project_number=project_number).first()
+            was_auto_created = False
+            if project is None:
+                project = Project(
+                    project_number=project_number,
+                    name=project_name or "Unnamed Project",
+                    status="active",
+                )
+                db.session.add(project)
+                db.session.flush()
+                was_auto_created = True
+                auto_created_projects.append({
+                    "id": project.id,
+                    "project_number": project.project_number,
+                    "name": project.name,
+                })
 
-    parser_data_json = json.dumps(parser_data)
+            workorder = parser_data.get("workorder")
+            file_samples_saved = 0
+            file_results_saved = 0
+            file_duplicates_skipped = 0
+
+            for sample_data in samples_in:
+                client_sample_id = (
+                    sample_data.get("client_sample_id")
+                    or sample_data.get("lab_sample_id")
+                    or "UNKNOWN"
+                )
+
+                parsed_methods = _parsed_sample_methods(sample_data)
+                existing_matches = Sample.query.filter_by(
+                    project_id=project.id,
+                    client_sample_id=client_sample_id,
+                ).all()
+                has_overlap = any(
+                    parsed_methods & _existing_sample_methods(existing)
+                    for existing in existing_matches
+                )
+                if has_overlap:
+                    file_duplicates_skipped += 1
+                    continue
+
+                matrix = (sample_data.get("matrix") or "Other").strip() or "Other"
+                sample = Sample(
+                    project_id=project.id,
+                    client_sample_id=client_sample_id,
+                    lab_sample_id=sample_data.get("lab_sample_id"),
+                    lab_workorder=workorder,
+                    matrix=matrix,
+                    collection_date=_parse_date(sample_data.get("collection_date")),
+                    collection_time=sample_data.get("collection_time"),
+                    sample_volume=sample_data.get("sample_volume"),
+                )
+                db.session.add(sample)
+                db.session.flush()
+                file_samples_saved += 1
+
+                for r_data in sample_data.get("results") or []:
+                    analyte = (r_data.get("analyte") or "").strip()
+                    result_value = (r_data.get("result_value") or "").strip()
+                    if not analyte or not result_value:
+                        continue
+                    db.session.add(Result(
+                        sample_id=sample.id,
+                        analyte=analyte,
+                        result_value=result_value,
+                        result_numeric=_parse_numeric(result_value),
+                        result_units=r_data.get("result_units") or sample_data.get("units"),
+                        reporting_limit=r_data.get("reporting_limit"),
+                        dilution_factor=r_data.get("dilution_factor"),
+                        method_reference=sample_data.get("method"),
+                        lab_report_number=workorder,
+                        date_analyzed=_parse_datetime(r_data.get("date_analyzed")),
+                    ))
+                    file_results_saved += 1
+
+            saved_files.append({
+                "filename": filename,
+                "project_number": project.project_number,
+                "project_name": project.name,
+                "project_id": project.id,
+                "was_auto_created": was_auto_created,
+                "samples_saved": file_samples_saved,
+                "results_saved": file_results_saved,
+                "duplicates_skipped": file_duplicates_skipped,
+            })
+            total_samples_saved += file_samples_saved
+            total_results_saved += file_results_saved
+            total_duplicates_skipped += file_duplicates_skipped
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+    db.session.commit()
+
     return render_template(
-        "uploads/dump_confirm.html",
-        parser_data=parser_data,
-        parser_data_json=parser_data_json,
-        matrix_options=MATRIX_OPTIONS,
-        existing_project=existing_project,
-        project_exists=existing_project is not None,
-        workorder_exists=workorder_exists,
-        existing_workorder_samples=existing_workorder_samples,
+        "uploads/dump_summary.html",
+        saved_files=saved_files,
+        failed_files=failed_files,
+        auto_created_projects=auto_created_projects,
+        total_samples_saved=total_samples_saved,
+        total_results_saved=total_results_saved,
+        total_duplicates_skipped=total_duplicates_skipped,
     )
 
 
