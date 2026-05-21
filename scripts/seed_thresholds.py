@@ -18,6 +18,9 @@ THRESHOLDS = [
     # AIR — Area Air (ambient air-quality standards; OSHA does not apply to area samples)
     ("Lead", "Area Air", "NAAQS (rolling 3-month)", "EPA", 0.15, "µg/m³"),
     ("Lead", "Area Air", "CAAQS (30-day average)", "CARB", 1.5, "µg/m³"),
+    ("Lead", "Area Air", "BAAQMD Reg 11-1-302 (24-hour ground level)", "BAAQMD", 1.0, "µg/m³"),
+    ("Lead", "Area Air", "BAAQMD Reg 11-1-303 (30-day above background)", "BAAQMD", 1.0, "µg/m³"),
+    ("Lead", "Area Air", "SCAQMD Rule 1420 (30-day rolling)", "SCAQMD", 0.100, "µg/m³"),
     # WIPE — HUD clearance
     ("Lead", "Wipe", "HUD Floor Clearance", "HUD", 10.0, "µg/ft²"),
     ("Lead", "Wipe", "HUD Window Sill Clearance", "HUD", 100.0, "µg/ft²"),
