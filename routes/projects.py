@@ -8,6 +8,7 @@ from flask_login import login_required
 
 from models import db, Project, Sample, Result
 from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
+from routes._helpers import csv_response, safe_filename_part
 from utils.calculations import project_status_summary, worst_sample_status
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
@@ -82,6 +83,23 @@ def detail(project_id):
         sample_statuses=sample_statuses,
         project_summary=project_summary,
     )
+
+
+@projects_bp.route("/<int:project_id>/export", methods=["GET"])
+@login_required
+def export_project(project_id):
+    project = Project.query.get_or_404(project_id)
+    samples = (
+        Sample.query
+        .filter_by(project_id=project.id)
+        .order_by(Sample.collection_date.desc(), Sample.client_sample_id.asc())
+        .all()
+    )
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    safe_number = safe_filename_part(project.project_number)
+    filename = f"project_{safe_number}_export_{timestamp}.csv"
+    return csv_response(samples, filename)
 
 
 VALID_PROJECT_STATUSES = ("active", "archived", "complete")

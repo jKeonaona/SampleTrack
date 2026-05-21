@@ -1,9 +1,12 @@
+from datetime import datetime
+
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from sqlalchemy import or_
 
 from models import db, Project, Sample
 from parsers.lab_report import MATRIX_OPTIONS
+from routes._helpers import csv_response
 from routes.projects import _parse_date
 from utils.calculations import evaluate_result, worst_sample_status
 
@@ -20,14 +23,11 @@ AVAILABLE_STATUSES = [
 NEUTRAL_STATUSES = ("no_thresholds", "no_value", "no_results")
 
 
-@samples_bp.route("/samples", methods=["GET"])
-@login_required
-def list_samples():
-    # Performance note: worst_sample_status performs an N+1 query (one Results
-    # iteration per sample + one Threshold query per result). For the current
-    # dataset size this is fine. Optimize later by caching worst status on
-    # Sample or computing it in a background job.
+def _parse_filter_args():
+    """Parse filter query params from request.args and coerce/validate them.
 
+    Returns (project_id, matrix, status_filter, q_str).
+    """
     project_id_raw = (request.args.get("project_id") or "").strip()
     project_id = None
     if project_id_raw:
@@ -46,7 +46,17 @@ def list_samples():
         status_filter = ""
 
     q_str = (request.args.get("q") or "").strip()
+    return project_id, matrix, status_filter, q_str
 
+
+def _filtered_samples(project_id, matrix, status_filter, q_str):
+    """Apply parsed filters and return (samples_list, sample_statuses_dict).
+
+    Performance note: worst_sample_status performs an N+1 query (one Results
+    iteration per sample + one Threshold query per result). For the current
+    dataset size this is fine. Optimize later by caching worst status on
+    Sample or computing it in a background job.
+    """
     query = Sample.query
     if project_id is not None:
         query = query.filter(Sample.project_id == project_id)
@@ -80,6 +90,15 @@ def list_samples():
                 if sample_statuses[s.id] == status_filter
             ]
 
+    return all_samples, sample_statuses
+
+
+@samples_bp.route("/samples", methods=["GET"])
+@login_required
+def list_samples():
+    project_id, matrix, status_filter, q_str = _parse_filter_args()
+    all_samples, sample_statuses = _filtered_samples(project_id, matrix, status_filter, q_str)
+
     filters = {
         "project_id": project_id,
         "matrix": matrix,
@@ -101,6 +120,17 @@ def list_samples():
         available_statuses=AVAILABLE_STATUSES,
         total_count=len(all_samples),
     )
+
+
+@samples_bp.route("/samples/export", methods=["GET"])
+@login_required
+def export_samples():
+    project_id, matrix, status_filter, q_str = _parse_filter_args()
+    all_samples, _ = _filtered_samples(project_id, matrix, status_filter, q_str)
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    filename = f"sampletrack_export_{timestamp}.csv"
+    return csv_response(all_samples, filename)
 
 
 @samples_bp.route("/samples/<int:sample_id>", methods=["GET"])

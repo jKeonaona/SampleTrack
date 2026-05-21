@@ -25,6 +25,7 @@
       <a class="btn secondary" href="{{ url_for('projects.edit', project_id=project.id) }}">Edit Project</a>
       <a class="btn" href="{{ url_for('uploads.dump') }}">Upload Lab Report</a>
       <a class="btn secondary" href="#">Add Sample Manually</a>
+      <a class="btn secondary" href="{{ url_for('projects.export_project', project_id=project.id) }}">⬇ Download CSV</a>
     </div>
   </div>
 

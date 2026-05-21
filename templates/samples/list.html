@@ -90,6 +90,12 @@
       <div class="submit-field">
         <button type="submit" class="btn">Apply Filters</button>
         <a class="btn secondary" href="{{ url_for('samples.list_samples') }}">Clear</a>
+        <a class="btn secondary"
+           href="{{ url_for('samples.export_samples',
+             q=filters.q or None,
+             project_id=filters.project_id if filters.project_id is not none else None,
+             matrix=filters.matrix or None,
+             status=filters.status or None) }}">⬇ Download CSV</a>
       </div>
     </form>
   </div>
