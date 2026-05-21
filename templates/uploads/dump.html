@@ -3,10 +3,47 @@
 {% block title %}Upload Lab Reports{% endblock %}
 
 {% block content %}
+  <style>
+    .progress-track {
+      width: 100%;
+      height: 24px;
+      background: #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: var(--accent);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .results-log {
+      max-height: 240px;
+      overflow-y: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.85rem;
+      padding: 0.5rem 0.75rem;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      margin-top: 0.75rem;
+    }
+    .results-log .saved { color: #166534; }
+    .results-log .failed { color: #b91c1c; }
+  </style>
+
   <h1>Upload Lab Reports</h1>
   <p class="subtitle">Drop one or more lab report PDFs here. The system parses each PDF, routes samples to the right project, and creates new projects automatically when needed.</p>
 
-  <form class="stacked" method="post" enctype="multipart/form-data" action="{{ url_for('uploads.upload') }}">
+  <form id="upload-form" class="stacked" method="post" enctype="multipart/form-data" action="{{ url_for('uploads.upload') }}">
     <div class="field">
       <label for="files">Lab Report PDFs</label>
       <input type="file" id="files" name="files" multiple accept="application/pdf,.pdf" required>
@@ -16,6 +53,19 @@
       <button type="submit" class="btn">Upload All</button>
     </div>
   </form>
+
+  <div id="progress-container" class="info-block" style="display: none; margin-top: 1rem;">
+    <h2 style="margin-top: 0;">Processing Uploads</h2>
+    <div id="progress-label">Preparing...</div>
+    <div class="progress-track" style="margin-top: 0.5rem;">
+      <div class="progress-fill" id="progress-fill"></div>
+    </div>
+    <div class="progress-meta">
+      <span>&nbsp;</span>
+      <span id="progress-percent">0%</span>
+    </div>
+    <div id="results-log" class="results-log"></div>
+  </div>
 
   <div class="info-block" style="margin-top: 1.5rem;">
     <h2 style="margin-top: 0; font-size: 1rem;">Sample ID prefix conventions</h2>
@@ -29,4 +79,105 @@
       <dt>WS-</dt><dd>Wipe</dd>
     </dl>
   </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      var form = document.getElementById("upload-form");
+      var filesInput = document.getElementById("files");
+      var progressContainer = document.getElementById("progress-container");
+      var progressLabel = document.getElementById("progress-label");
+      var progressFill = document.getElementById("progress-fill");
+      var progressPercent = document.getElementById("progress-percent");
+      var resultsLog = document.getElementById("results-log");
+
+      function appendLog(message, cls) {
+        var div = document.createElement("div");
+        div.className = cls;
+        div.textContent = message;
+        resultsLog.appendChild(div);
+        resultsLog.scrollTop = resultsLog.scrollHeight;
+      }
+
+      form.addEventListener("submit", function (e) {
+        var files = Array.prototype.slice.call(filesInput.files);
+        if (files.length === 0) {
+          alert("Select at least one PDF.");
+          e.preventDefault();
+          return;
+        }
+
+        e.preventDefault();
+        form.style.display = "none";
+        progressContainer.style.display = "block";
+
+        runUploads(files);
+      });
+
+      async function runUploads(files) {
+        try {
+          var startResp = await fetch("{{ url_for('uploads.upload_start') }}", {
+            method: "POST",
+            credentials: "same-origin",
+          });
+          if (!startResp.ok) {
+            throw new Error("HTTP " + startResp.status);
+          }
+        } catch (err) {
+          appendLog("[Failed] Could not start upload session: " + err.message, "failed");
+          progressLabel.textContent = "Upload session failed to start.";
+          return;
+        }
+
+        for (var i = 0; i < files.length; i++) {
+          var file = files[i];
+          progressLabel.textContent =
+            "Processing " + (i + 1) + " of " + files.length + ": " + file.name;
+
+          var fd = new FormData();
+          fd.append("file", file);
+
+          try {
+            var resp = await fetch("{{ url_for('uploads.upload_single') }}", {
+              method: "POST",
+              body: fd,
+              credentials: "same-origin",
+            });
+            if (!resp.ok) {
+              appendLog("[Failed] " + file.name + " - HTTP " + resp.status, "failed");
+            } else {
+              var data = await resp.json();
+              if (data && data.success && data.outcome) {
+                var o = data.outcome;
+                if (o.status === "saved") {
+                  appendLog(
+                    "[Saved] " + o.filename + " -> " + o.project_number +
+                    " (" + o.samples_saved + " samples, " + o.duplicates_skipped + " duplicates skipped)",
+                    "saved"
+                  );
+                } else {
+                  appendLog("[Failed] " + o.filename + " - " + o.reason, "failed");
+                }
+              } else {
+                appendLog(
+                  "[Failed] " + file.name + " - " + ((data && data.error) || "unknown error"),
+                  "failed"
+                );
+              }
+            }
+          } catch (err) {
+            appendLog("[Failed] " + file.name + " - network error", "failed");
+          }
+
+          var pct = Math.round(((i + 1) / files.length) * 100);
+          progressFill.style.width = pct + "%";
+          progressPercent.textContent = pct + "%";
+        }
+
+        progressLabel.textContent = "Processing complete. Redirecting to summary...";
+        setTimeout(function () {
+          window.location.href = "{{ url_for('uploads.upload_summary') }}";
+        }, 800);
+      }
+    });
+  </script>
 {% endblock %}
