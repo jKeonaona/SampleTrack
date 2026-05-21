@@ -4,6 +4,88 @@
 
 {% block content %}
   <style>
+    .upload-container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      text-align: center;
+    }
+    .drop-zone {
+      border: 2px dashed #d1d5db;
+      border-radius: 12px;
+      padding: 60px 20px;
+      cursor: pointer;
+      background: #f9fafb;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .drop-zone:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+    .drop-zone.drag-over {
+      border-color: #3b82f6;
+      border-style: solid;
+      background: #dbeafe;
+    }
+    .drop-zone-icon {
+      font-size: 48px;
+      color: #6b7280;
+      margin-bottom: 16px;
+      display: block;
+      line-height: 1;
+    }
+    .drop-zone-heading {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #111827;
+    }
+    .drop-zone-subtitle {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .file-list {
+      margin-top: 20px;
+      text-align: left;
+    }
+    .file-list-item {
+      padding: 10px 14px;
+      background: #f3f4f6;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+    }
+    .file-list-item .filename {
+      flex: 1;
+      min-width: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-list-item .filesize {
+      color: #6b7280;
+      margin-right: 12px;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .file-list-item .remove-btn {
+      background: none;
+      border: none;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 16px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .file-list-item .remove-btn:hover {
+      color: #ef4444;
+    }
+
     .progress-track {
       width: 100%;
       height: 24px;
@@ -40,21 +122,45 @@
     .results-log .failed { color: #b91c1c; }
   </style>
 
-  <h1>Upload Lab Reports</h1>
-  <p class="subtitle">Drop one or more lab report PDFs here. The system parses each PDF, routes samples to the right project, and creates new projects automatically when needed.</p>
+  <div class="upload-container">
+    <h1>Upload Lab Reports</h1>
+    <p class="subtitle">Drop one or more lab report PDFs here. The system parses each PDF, routes samples to the right project, and creates new projects automatically when needed.</p>
 
-  <form id="upload-form" class="stacked" method="post" enctype="multipart/form-data" action="{{ url_for('uploads.upload') }}">
-    <div class="field">
-      <label for="files">Lab Report PDFs</label>
-      <input type="file" id="files" name="files" multiple accept="application/pdf,.pdf" required>
-      <p style="font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem;">Select multiple PDFs at once for bulk processing. For best results, upload 10 or fewer files in a single batch.</p>
-    </div>
-    <div class="actions">
-      <button type="submit" class="btn">Upload All</button>
-    </div>
-  </form>
+    <form id="upload-form" method="post" enctype="multipart/form-data" action="{{ url_for('uploads.upload') }}">
+      <input type="file" id="files-input" name="files" multiple accept="application/pdf,.pdf" style="display: none;">
 
-  <div id="progress-container" class="info-block" style="display: none; margin-top: 1rem;">
+      <div id="drop-zone">
+        <span class="drop-zone-icon">⬆</span>
+        <div class="drop-zone-heading">Drop PDFs here</div>
+        <div class="drop-zone-subtitle">or click to browse</div>
+      </div>
+
+      <div id="file-list" class="file-list"></div>
+
+      <div class="actions" style="margin-top: 1rem; justify-content: center;">
+        <button id="submit-btn" type="submit" class="btn" style="display: none;">Upload All</button>
+      </div>
+
+      <p style="font-size: 0.85rem; color: var(--muted); margin-top: 1rem;">Select multiple PDFs at once for bulk processing. For best results, upload 10 or fewer files in a single batch.</p>
+    </form>
+
+    <noscript>
+      <div class="info-block" style="margin-top: 1.5rem; text-align: left;">
+        <p style="margin-top: 0;">JavaScript is disabled. Use the form below to upload files.</p>
+        <form class="stacked" method="post" enctype="multipart/form-data" action="{{ url_for('uploads.upload') }}">
+          <div class="field">
+            <label for="files-fallback">Lab Report PDFs</label>
+            <input type="file" id="files-fallback" name="files" multiple accept="application/pdf,.pdf" required>
+          </div>
+          <div class="actions">
+            <button type="submit" class="btn">Upload All</button>
+          </div>
+        </form>
+      </div>
+    </noscript>
+  </div>
+
+  <div id="progress-container" class="info-block" style="display: none; max-width: 600px; margin: 1rem auto;">
     <h2 style="margin-top: 0;">Processing Uploads</h2>
     <div id="progress-label">Preparing...</div>
     <div class="progress-track" style="margin-top: 0.5rem;">
@@ -67,7 +173,7 @@
     <div id="results-log" class="results-log"></div>
   </div>
 
-  <div class="info-block" style="margin-top: 1.5rem;">
+  <div class="info-block" style="max-width: 600px; margin: 1.5rem auto 0;">
     <h2 style="margin-top: 0; font-size: 1rem;">Sample ID prefix conventions</h2>
     <dl>
       <dt>AM-</dt><dd>Area Air</dd>
@@ -83,12 +189,115 @@
   <script>
     document.addEventListener("DOMContentLoaded", function () {
       var form = document.getElementById("upload-form");
-      var filesInput = document.getElementById("files");
+      var filesInput = document.getElementById("files-input");
+      var dropZone = document.getElementById("drop-zone");
+      var fileList = document.getElementById("file-list");
+      var submitBtn = document.getElementById("submit-btn");
       var progressContainer = document.getElementById("progress-container");
       var progressLabel = document.getElementById("progress-label");
       var progressFill = document.getElementById("progress-fill");
       var progressPercent = document.getElementById("progress-percent");
       var resultsLog = document.getElementById("results-log");
+
+      function formatBytes(bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+        return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      function updateFileList() {
+        fileList.innerHTML = "";
+        var n = filesInput.files.length;
+        if (n === 0) {
+          submitBtn.style.display = "none";
+          return;
+        }
+        submitBtn.style.display = "inline-block";
+        for (var i = 0; i < n; i++) {
+          (function (idx) {
+            var f = filesInput.files[idx];
+            var row = document.createElement("div");
+            row.className = "file-list-item";
+
+            var nameSpan = document.createElement("span");
+            nameSpan.className = "filename";
+            nameSpan.textContent = f.name;
+
+            var sizeSpan = document.createElement("span");
+            sizeSpan.className = "filesize";
+            sizeSpan.textContent = formatBytes(f.size);
+
+            var btn = document.createElement("button");
+            btn.type = "button";
+            btn.className = "remove-btn";
+            btn.textContent = "✕";
+            btn.setAttribute("aria-label", "Remove " + f.name);
+            btn.addEventListener("click", function (e) {
+              e.stopPropagation();
+              removeFileAt(idx);
+            });
+
+            row.appendChild(nameSpan);
+            row.appendChild(sizeSpan);
+            row.appendChild(btn);
+            fileList.appendChild(row);
+          })(i);
+        }
+      }
+
+      function removeFileAt(idx) {
+        var dt = new DataTransfer();
+        for (var i = 0; i < filesInput.files.length; i++) {
+          if (i !== idx) dt.items.add(filesInput.files[i]);
+        }
+        filesInput.files = dt.files;
+        updateFileList();
+      }
+
+      dropZone.addEventListener("click", function (e) {
+        if (e.target && e.target.classList && e.target.classList.contains("remove-btn")) return;
+        filesInput.click();
+      });
+
+      filesInput.addEventListener("change", function () {
+        updateFileList();
+      });
+
+      dropZone.addEventListener("dragenter", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add("drag-over");
+      });
+
+      dropZone.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add("drag-over");
+      });
+
+      dropZone.addEventListener("dragleave", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!dropZone.contains(e.relatedTarget)) {
+          dropZone.classList.remove("drag-over");
+        }
+      });
+
+      dropZone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove("drag-over");
+
+        var dropped = e.dataTransfer.files;
+        var dt = new DataTransfer();
+        for (var i = 0; i < dropped.length; i++) {
+          if (dropped[i].name.toLowerCase().endsWith(".pdf")) {
+            dt.items.add(dropped[i]);
+          }
+        }
+        filesInput.files = dt.files;
+        updateFileList();
+      });
 
       function appendLog(message, cls) {
         var div = document.createElement("div");
