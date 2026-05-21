@@ -37,6 +37,39 @@
       "no_value": "No value",
       "no_results": "No results",
     } %}
+
+    <h3 style="margin-top: 0.5rem;">Sample Status Summary</h3>
+    <div class="stats" style="margin-bottom: 1.25rem;">
+      <div class="stat-card" style="background: #dcfce7; border-color: #86efac;">
+        <div class="label">OK</div>
+        <div class="value">{{ project_summary.ok }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(project_summary.ok / project_summary.total * 100) }}% of {{ project_summary.total }}
+        </div>
+      </div>
+      <div class="stat-card" style="background: #fef3c7; border-color: #fcd34d;">
+        <div class="label">Warning</div>
+        <div class="value">{{ project_summary.warning }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(project_summary.warning / project_summary.total * 100) }}% of {{ project_summary.total }}
+        </div>
+      </div>
+      <div class="stat-card" style="background: #fef2f2; border-color: #fca5a5;">
+        <div class="label">Exceeded</div>
+        <div class="value">{{ project_summary.exceeded }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(project_summary.exceeded / project_summary.total * 100) }}% of {{ project_summary.total }}
+        </div>
+      </div>
+      <div class="stat-card" style="background: #eef0f4;">
+        <div class="label">No Data</div>
+        <div class="value">{{ project_summary.no_data }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(project_summary.no_data / project_summary.total * 100) }}% of {{ project_summary.total }}
+        </div>
+      </div>
+    </div>
+
     <table class="data">
       <thead>
         <tr>

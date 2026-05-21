@@ -6,6 +6,18 @@
   <h1>SampleTrack</h1>
   <p class="subtitle">Sample analytical results tracking</p>
 
+  {% if exceeded_count > 0 %}
+    <div style="border: 1px solid var(--danger); background: #fdecea; color: var(--danger); padding: 0.85rem 1rem; border-radius: 6px; margin-bottom: 1rem;">
+      <strong>{{ exceeded_count }} sample(s) exceed regulatory limits.</strong>
+      Review immediately. <a href="{{ url_for('projects.list_projects') }}" style="color: var(--danger); text-decoration: underline;">Go to projects</a>.
+    </div>
+  {% elif warning_count > 0 %}
+    <div style="border: 1px solid #f59e0b; background: #fef3c7; color: #78350f; padding: 0.85rem 1rem; border-radius: 6px; margin-bottom: 1rem;">
+      <strong>{{ warning_count }} sample(s) approaching or at action level thresholds.</strong>
+      Review recommended. <a href="{{ url_for('projects.list_projects') }}" style="color: #78350f; text-decoration: underline;">Go to projects</a>.
+    </div>
+  {% endif %}
+
   <div class="stats">
     <div class="stat-card">
       <div class="label">Projects</div>
@@ -20,4 +32,38 @@
       <div class="value">{{ result_count }}</div>
     </div>
   </div>
+
+  {% if global_summary.total > 0 %}
+    <h2>Sample Status Overview</h2>
+    <div class="stats">
+      <div class="stat-card" style="background: #dcfce7; border-color: #86efac;">
+        <div class="label">OK</div>
+        <div class="value">{{ global_summary.ok }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(global_summary.ok / global_summary.total * 100) }}% of {{ global_summary.total }}
+        </div>
+      </div>
+      <div class="stat-card" style="background: #fef3c7; border-color: #fcd34d;">
+        <div class="label">Warning</div>
+        <div class="value">{{ global_summary.warning }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(global_summary.warning / global_summary.total * 100) }}% of {{ global_summary.total }}
+        </div>
+      </div>
+      <div class="stat-card" style="background: #fef2f2; border-color: #fca5a5;">
+        <div class="label">Exceeded</div>
+        <div class="value">{{ global_summary.exceeded }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(global_summary.exceeded / global_summary.total * 100) }}% of {{ global_summary.total }}
+        </div>
+      </div>
+      <div class="stat-card" style="background: #eef0f4;">
+        <div class="label">No Data</div>
+        <div class="value">{{ global_summary.no_data }}</div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          {{ "%.0f"|format(global_summary.no_data / global_summary.total * 100) }}% of {{ global_summary.total }}
+        </div>
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}

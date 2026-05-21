@@ -8,7 +8,7 @@ from flask_login import login_required
 
 from models import db, Project, Sample, Result
 from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
-from utils.calculations import worst_sample_status
+from utils.calculations import project_status_summary, worst_sample_status
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
 
@@ -74,11 +74,13 @@ def detail(project_id):
         .all()
     )
     sample_statuses = {s.id: worst_sample_status(s) for s in samples}
+    project_summary = project_status_summary(samples)
     return render_template(
         "projects/detail.html",
         project=project,
         samples=samples,
         sample_statuses=sample_statuses,
+        project_summary=project_summary,
     )
 
 

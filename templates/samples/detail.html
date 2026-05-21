@@ -142,6 +142,8 @@
                     {% else %}
                       <span class="flag-pill exceeded">Exceeded</span>
                     {% endif %}
+                  {% elif item.approaching %}
+                    <span class="flag-pill warning">Approaching</span>
                   {% else %}
                     <span class="flag-pill ok">Below</span>
                   {% endif %}

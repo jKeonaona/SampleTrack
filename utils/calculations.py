@@ -5,6 +5,8 @@ from models import Threshold
 
 AIR_MATRICES = ("Area Air", "Personal Air")
 
+APPROACHING_THRESHOLD = 0.80
+
 _NUMBER_RE = re.compile(r"-?\d+\.?\d*")
 
 
@@ -77,9 +79,14 @@ def evaluate_result(sample, result):
     for t in thresholds:
         ratio = comparison_value / t.value if t.value else 0.0
         exceeded = comparison_value >= t.value
+        approaching = (
+            (comparison_value >= t.value * APPROACHING_THRESHOLD)
+            and not exceeded
+        )
         evaluations.append({
             "threshold": t,
             "exceeded": exceeded,
+            "approaching": approaching,
             "ratio": ratio,
         })
 
@@ -91,10 +98,11 @@ def evaluate_result(sample, result):
         e["exceeded"] and "Action Level" in e["threshold"].threshold_name
         for e in evaluations
     )
+    any_approaching = any(e["approaching"] for e in evaluations)
 
     if pel_exceeded:
         overall_status = "exceeded"
-    elif action_exceeded:
+    elif any_approaching or action_exceeded:
         overall_status = "warning"
     else:
         overall_status = "ok"
@@ -121,3 +129,19 @@ def worst_sample_status(sample):
     if "ok" in statuses:
         return "ok"
     return "no_thresholds"
+
+
+def project_status_summary(samples):
+    summary = {"total": 0, "ok": 0, "warning": 0, "exceeded": 0, "no_data": 0}
+    for s in samples:
+        summary["total"] += 1
+        status = worst_sample_status(s)
+        if status == "exceeded":
+            summary["exceeded"] += 1
+        elif status == "warning":
+            summary["warning"] += 1
+        elif status == "ok":
+            summary["ok"] += 1
+        else:
+            summary["no_data"] += 1
+    return summary

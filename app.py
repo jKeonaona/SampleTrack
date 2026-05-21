@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 import os
 
 from models import db, Project, Sample, Result, User
+from utils.calculations import project_status_summary
 from routes.projects import projects_bp
 from routes.uploads import uploads_bp
 from routes.auth import auth_bp
@@ -39,11 +40,16 @@ app.register_blueprint(samples_bp)
 @app.route("/")
 @login_required
 def index():
+    all_samples = Sample.query.all()
+    global_summary = project_status_summary(all_samples)
     return render_template(
         "index.html",
         project_count=Project.query.count(),
         sample_count=Sample.query.count(),
         result_count=Result.query.count(),
+        global_summary=global_summary,
+        exceeded_count=global_summary["exceeded"],
+        warning_count=global_summary["warning"],
     )
 
 
