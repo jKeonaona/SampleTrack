@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Admin{% endblock %}
+
+{% block content %}
+  <h1>Admin</h1>
+  <p class="subtitle">User management and system settings</p>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Total Users</div>
+      <div class="value">{{ total_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Active Users</div>
+      <div class="value">{{ active_users }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Admins</div>
+      <div class="value">{{ admin_count }}</div>
+    </div>
+  </div>
+
+  <h2>Sections</h2>
+  <div class="stats">
+    <a href="{{ url_for('admin.users_list') }}" class="stat-card" style="text-decoration: none; color: inherit;">
+      <div class="label">Manage Users</div>
+      <div class="value" style="font-size: 1rem; font-weight: 500; margin-top: 0.5rem;">List, create, edit, deactivate</div>
+    </a>
+    <div class="stat-card" style="opacity: 0.5;">
+      <div class="label">Settings</div>
+      <div class="value" style="font-size: 1rem; font-weight: 500; margin-top: 0.5rem;">Coming soon</div>
+    </div>
+  </div>
+{% endblock %}

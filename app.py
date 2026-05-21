@@ -7,6 +7,7 @@ from models import db, Project, Sample, Result, User
 from routes.projects import projects_bp
 from routes.uploads import uploads_bp
 from routes.auth import auth_bp
+from routes.admin import admin_bp
 
 load_dotenv()
 
@@ -30,6 +31,7 @@ def load_user(user_id):
 app.register_blueprint(projects_bp)
 app.register_blueprint(uploads_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
 
 
 @app.route("/")

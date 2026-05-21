@@ -185,6 +185,16 @@
         background: #eef0f4;
         color: var(--fg);
       }
+      .role-pill {
+        display: inline-block;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .role-pill.admin { background: #fee2e2; color: #991b1b; }
+      .role-pill.user { background: #eef0f4; color: var(--fg); }
     </style>
   </head>
   <body>
@@ -193,6 +203,9 @@
       <div class="links">
         <a href="/projects">Projects</a>
         <a href="/upload">Upload</a>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+          <a href="/admin">Admin</a>
+        {% endif %}
       </div>
       {% if current_user.is_authenticated %}
         <div class="user">

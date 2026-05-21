@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Users — Admin{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Users</h1>
+    <a class="btn" href="{{ url_for('admin.user_new') }}">New User</a>
+  </div>
+
+  <table class="data">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Role</th>
+        <th>Active</th>
+        <th>Created</th>
+        <th>Last Login</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+        <tr>
+          <td>{{ u.name or "—" }}</td>
+          <td>{{ u.email }}</td>
+          <td><span class="role-pill {{ u.role }}">{{ u.role }}</span></td>
+          <td>
+            {% if u.active %}
+              <span style="color: var(--success); font-weight: 600;">✓</span>
+            {% else %}
+              <span style="color: var(--danger); font-weight: 600;">✗</span>
+            {% endif %}
+          </td>
+          <td>{{ u.created_at.strftime("%Y-%m-%d") if u.created_at else "—" }}</td>
+          <td>{{ u.last_login.strftime("%Y-%m-%d %H:%M") if u.last_login else "—" }}</td>
+          <td style="display: flex; gap: 0.4rem; align-items: center;">
+            <a class="btn secondary" style="padding: 0.25rem 0.6rem; font-size: 0.85rem;" href="{{ url_for('admin.user_edit', user_id=u.id) }}">Edit</a>
+            {% if u.active and u.id != current_user.id %}
+              <form method="post" action="{{ url_for('admin.user_deactivate', user_id=u.id) }}" style="margin: 0;">
+                <button type="submit" class="btn secondary" style="padding: 0.25rem 0.6rem; font-size: 0.85rem; color: var(--danger); border-color: var(--danger);">Deactivate</button>
+              </form>
+            {% elif not u.active %}
+              <form method="post" action="{{ url_for('admin.user_activate', user_id=u.id) }}" style="margin: 0;">
+                <button type="submit" class="btn secondary" style="padding: 0.25rem 0.6rem; font-size: 0.85rem; color: var(--success); border-color: var(--success);">Activate</button>
+              </form>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}

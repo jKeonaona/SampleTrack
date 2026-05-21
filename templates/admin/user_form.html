@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}
+  {% if mode == "edit" %}Edit User: {{ user.name or user.email }}{% else %}New User{% endif %}
+{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>
+      {% if mode == "edit" %}Edit User: {{ user.name or user.email }}{% else %}New User{% endif %}
+    </h1>
+    <a class="btn secondary" href="{{ url_for('admin.users_list') }}">Back to Users</a>
+  </div>
+
+  <form class="stacked" method="post"
+        action="{% if mode == 'edit' %}{{ url_for('admin.user_update', user_id=user.id) }}{% else %}{{ url_for('admin.user_create') }}{% endif %}">
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ form.name or '' }}">
+    </div>
+    <div class="field">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required value="{{ form.email or '' }}">
+    </div>
+    <div class="field">
+      <label for="role">Role</label>
+      <select id="role" name="role">
+        {% set current_role = form.role or 'user' %}
+        <option value="user" {% if current_role == 'user' %}selected{% endif %}>user</option>
+        <option value="admin" {% if current_role == 'admin' %}selected{% endif %}>admin</option>
+      </select>
+    </div>
+
+    {% if mode == "edit" %}
+      <div class="field">
+        <label style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" name="active" {% if form.active %}checked{% endif %}
+                 {% if user.id == current_user.id %}disabled title="You cannot deactivate yourself"{% endif %}>
+          <span>Active</span>
+        </label>
+        {% if user.id == current_user.id %}
+          <input type="hidden" name="active" value="on">
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if mode == "new" %}
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required minlength="8">
+      </div>
+      <div class="field">
+        <label for="password_confirm">Confirm Password</label>
+        <input type="password" id="password_confirm" name="password_confirm" required minlength="8">
+      </div>
+    {% endif %}
+
+    <div class="actions">
+      <button type="submit" class="btn">
+        {% if mode == "edit" %}Save Changes{% else %}Create User{% endif %}
+      </button>
+      <a class="btn secondary" href="{{ url_for('admin.users_list') }}">Cancel</a>
+    </div>
+  </form>
+
+  {% if mode == "edit" %}
+    <h2 style="margin-top: 2rem;">Change Password</h2>
+    <p class="subtitle">Admin override — no current password required.</p>
+    <form class="stacked" method="post" action="{{ url_for('admin.user_password_reset', user_id=user.id) }}">
+      <div class="field">
+        <label for="new_password">New Password</label>
+        <input type="password" id="new_password" name="password" required minlength="8">
+      </div>
+      <div class="field">
+        <label for="new_password_confirm">Confirm New Password</label>
+        <input type="password" id="new_password_confirm" name="password_confirm" required minlength="8">
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn">Reset Password</button>
+      </div>
+    </form>
+  {% endif %}
+{% endblock %}
