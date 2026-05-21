@@ -69,6 +69,60 @@ def detail(project_id):
     return render_template("projects/detail.html", project=project, samples=project.samples)
 
 
+VALID_PROJECT_STATUSES = ("active", "archived", "complete")
+
+
+@projects_bp.route("/<int:project_id>/edit", methods=["GET"])
+@login_required
+def edit(project_id):
+    project = Project.query.get_or_404(project_id)
+    form = {
+        "project_number": project.project_number,
+        "name": project.name or "",
+        "client": project.client or "",
+        "location": project.location or "",
+        "status": project.status or "active",
+    }
+    return render_template("projects/edit.html", project=project, form=form)
+
+
+@projects_bp.route("/<int:project_id>/edit", methods=["POST"])
+@login_required
+def edit_save(project_id):
+    project = Project.query.get_or_404(project_id)
+    form = {
+        "project_number": (request.form.get("project_number") or "").strip(),
+        "name": (request.form.get("name") or "").strip(),
+        "client": (request.form.get("client") or "").strip(),
+        "location": (request.form.get("location") or "").strip(),
+        "status": (request.form.get("status") or "active").strip(),
+    }
+
+    if not form["project_number"]:
+        flash("Project number is required.", "error")
+        return render_template("projects/edit.html", project=project, form=form), 400
+
+    if form["status"] not in VALID_PROJECT_STATUSES:
+        flash(f"Status must be one of: {', '.join(VALID_PROJECT_STATUSES)}.", "error")
+        return render_template("projects/edit.html", project=project, form=form), 400
+
+    if form["project_number"] != project.project_number:
+        clash = Project.query.filter_by(project_number=form["project_number"]).first()
+        if clash is not None and clash.id != project.id:
+            flash(f"Project number '{form['project_number']}' is already in use.", "error")
+            return render_template("projects/edit.html", project=project, form=form), 400
+
+    project.project_number = form["project_number"]
+    project.name = form["name"] or "Unnamed Project"
+    project.client = form["client"] or None
+    project.location = form["location"] or None
+    project.status = form["status"]
+    db.session.commit()
+
+    flash("Project updated.", "success")
+    return redirect(url_for("projects.detail", project_id=project.id))
+
+
 @projects_bp.route("/<int:project_id>/upload", methods=["GET"])
 @login_required
 def upload_new(project_id):

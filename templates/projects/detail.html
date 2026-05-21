@@ -22,6 +22,7 @@
   <div class="toolbar" style="margin-top: 1.5rem;">
     <h2 style="margin: 0;">Samples</h2>
     <div style="display: flex; gap: 0.5rem;">
+      <a class="btn secondary" href="{{ url_for('projects.edit', project_id=project.id) }}">Edit Project</a>
       <a class="btn" href="{{ url_for('uploads.dump') }}">Upload Lab Report</a>
       <a class="btn secondary" href="#">Add Sample Manually</a>
     </div>

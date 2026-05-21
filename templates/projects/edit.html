@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Project: {{ project.project_number }}{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Edit Project: {{ project.project_number }}</h1>
+    <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Cancel</a>
+  </div>
+
+  <form class="stacked" method="post" action="{{ url_for('projects.edit_save', project_id=project.id) }}">
+    <div class="field">
+      <label for="project_number">Project Number</label>
+      <input type="text" id="project_number" name="project_number" required value="{{ form.project_number or '' }}">
+    </div>
+    <div class="field">
+      <label for="name">Name</label>
+      <input type="text" id="name" name="name" value="{{ form.name or '' }}">
+    </div>
+    <div class="field">
+      <label for="client">Client</label>
+      <input type="text" id="client" name="client" value="{{ form.client or '' }}">
+    </div>
+    <div class="field">
+      <label for="location">Location</label>
+      <input type="text" id="location" name="location" value="{{ form.location or '' }}">
+    </div>
+    <div class="field">
+      <label for="status">Status</label>
+      <select id="status" name="status">
+        {% set current_status = form.status or 'active' %}
+        <option value="active" {% if current_status == 'active' %}selected{% endif %}>Active</option>
+        <option value="archived" {% if current_status == 'archived' %}selected{% endif %}>Archived</option>
+        <option value="complete" {% if current_status == 'complete' %}selected{% endif %}>Complete</option>
+      </select>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn">Save Changes</button>
+      <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
