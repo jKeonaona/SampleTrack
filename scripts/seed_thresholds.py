@@ -8,16 +8,16 @@ from models import db, Threshold
 
 
 THRESHOLDS = [
-    # AIR — PEL and Action Level for both Area Air and Personal Air,
-    # for both Cal/OSHA and Fed OSHA
-    ("Lead", "Area Air", "PEL (8-hr TWA)", "Cal/OSHA", 50.0, "µg/m³"),
-    ("Lead", "Area Air", "Action Level (8-hr TWA)", "Cal/OSHA", 30.0, "µg/m³"),
-    ("Lead", "Area Air", "PEL (8-hr TWA)", "Fed OSHA", 50.0, "µg/m³"),
-    ("Lead", "Area Air", "Action Level (8-hr TWA)", "Fed OSHA", 30.0, "µg/m³"),
-    ("Lead", "Personal Air", "PEL (8-hr TWA)", "Cal/OSHA", 50.0, "µg/m³"),
-    ("Lead", "Personal Air", "Action Level (8-hr TWA)", "Cal/OSHA", 30.0, "µg/m³"),
+    # AIR — Personal Air (OSHA worker-exposure standards)
+    # Cal/OSHA dropped PEL to 10 µg/m³ and Action Level to 2 µg/m³ effective Jan 1, 2025.
+    ("Lead", "Personal Air", "PEL (8-hr TWA)", "Cal/OSHA", 10.0, "µg/m³"),
+    ("Lead", "Personal Air", "Action Level (8-hr TWA)", "Cal/OSHA", 2.0, "µg/m³"),
+    ("Lead", "Personal Air", "PEL Abrasive Blasting (until 1/1/2030)", "Cal/OSHA", 25.0, "µg/m³"),
     ("Lead", "Personal Air", "PEL (8-hr TWA)", "Fed OSHA", 50.0, "µg/m³"),
     ("Lead", "Personal Air", "Action Level (8-hr TWA)", "Fed OSHA", 30.0, "µg/m³"),
+    # AIR — Area Air (ambient air-quality standards; OSHA does not apply to area samples)
+    ("Lead", "Area Air", "NAAQS (rolling 3-month)", "EPA", 0.15, "µg/m³"),
+    ("Lead", "Area Air", "CAAQS (30-day average)", "CARB", 1.5, "µg/m³"),
     # WIPE — HUD clearance
     ("Lead", "Wipe", "HUD Floor Clearance", "HUD", 10.0, "µg/ft²"),
     ("Lead", "Wipe", "HUD Window Sill Clearance", "HUD", 100.0, "µg/ft²"),
