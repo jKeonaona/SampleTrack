@@ -38,18 +38,18 @@ def compute_twa_8hr(sample, result):
 
 
 def evaluate_result(sample, result):
-    if sample.matrix in AIR_MATRICES:
+    if sample.matrix == "Personal Air":
         comparison_value = compute_twa_8hr(sample, result)
         basis = "8-hr TWA"
         units = result.result_units
-    elif result.result_numeric is not None:
-        comparison_value = result.result_numeric
+    elif sample.matrix == "Area Air":
+        comparison_value = 0.0 if result.result_numeric is None else result.result_numeric
         basis = "Direct"
         units = result.result_units
     else:
-        comparison_value = None
-        basis = None
-        units = None
+        comparison_value = 0.0 if result.result_numeric is None else result.result_numeric
+        basis = "Direct"
+        units = result.result_units
 
     thresholds = (
         Threshold.query
