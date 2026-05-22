@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 
-{% block title %}AMR: {{ amr.client_sample_id }}{% endblock %}
+{% block title %}Field Report: {{ amr.client_sample_id }}{% endblock %}
 
 {% block content %}
   <div class="toolbar">
-    <h1>Air Monitor Report: {{ amr.client_sample_id }}</h1>
+    <h1>Field Report: {{ amr.client_sample_id }}</h1>
     <div style="display: flex; gap: 0.5rem;">
       <a class="btn secondary" href="{{ url_for('amr.list_amr') }}">Back to list</a>
       <a class="btn" href="{{ url_for('amr.edit', id=amr.id) }}">Edit</a>
       {% if current_user.is_authenticated and current_user.is_admin %}
         <form method="post" action="{{ url_for('amr.delete', id=amr.id) }}"
-              onsubmit="return confirm('Delete this Air Monitor Report?');"
+              onsubmit="return confirm('Delete this Field Report?');"
               style="display: inline;">
           <button type="submit" class="btn" style="background: var(--danger); border-color: var(--danger);">Delete</button>
         </form>

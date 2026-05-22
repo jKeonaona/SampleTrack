@@ -103,7 +103,7 @@
     <p style="color: var(--muted);">No analytical results recorded for this sample.</p>
   {% endif %}
 
-  <h2>Field Air Monitor Report</h2>
+  <h2>Field Report</h2>
   {% if amr %}
     <div class="info-block">
       <p style="margin-top: 0;">
@@ -129,7 +129,7 @@
     </div>
   {% else %}
     <div class="info-block" style="color: var(--muted);">
-      No field Air Monitor Report on file for this sample.
+      No Field Report on file for this sample.
       <a href="{{ url_for('amr.new', client_sample_id=sample.client_sample_id) }}">Create one →</a>
     </div>
   {% endif %}

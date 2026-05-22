@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Field Air Monitor Reports{% endblock %}
+{% block title %}Field Reports{% endblock %}
 
 {% block content %}
   <div class="toolbar">
-    <h1>Field Air Monitor Reports</h1>
-    <a class="btn" href="{{ url_for('amr.new') }}">+ New Air Monitor Report</a>
+    <h1>Field Reports</h1>
+    <a class="btn" href="{{ url_for('amr.new') }}">+ New Field Report</a>
   </div>
 
   <p class="subtitle">
@@ -55,8 +55,8 @@
     </table>
   {% else %}
     <div class="empty">
-      <p>No Air Monitor Reports yet.</p>
-      <a class="btn" href="{{ url_for('amr.new') }}">+ New Air Monitor Report</a>
+      <p>No Field Reports yet.</p>
+      <a class="btn" href="{{ url_for('amr.new') }}">+ New Field Report</a>
     </div>
   {% endif %}
 {% endblock %}
