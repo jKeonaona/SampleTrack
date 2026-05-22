@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}Field Air Monitor Reports{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Field Air Monitor Reports</h1>
+    <a class="btn" href="{{ url_for('amr.new') }}">+ New Air Monitor Report</a>
+  </div>
+
+  <p class="subtitle">
+    Showing {{ reports|length }} report{% if reports|length != 1 %}s{% endif %}.
+  </p>
+
+  {% if reports %}
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Monitoring Date</th>
+          <th>Client Sample ID</th>
+          <th>Job Number</th>
+          <th>Phase</th>
+          <th>Worker / Location</th>
+          <th>Linked?</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reports %}
+          <tr>
+            <td>{{ r.monitoring_date or "—" }}</td>
+            <td><a href="{{ url_for('amr.detail', id=r.id) }}">{{ r.client_sample_id }}</a></td>
+            <td>{{ r.job_number or "—" }}</td>
+            <td>{{ r.monitoring_phase or "—" }}</td>
+            <td>
+              {% if r.is_personal_sample and r.worker_monitored %}
+                {{ r.worker_monitored }}
+              {% elif r.is_area_sample and r.monitor_location %}
+                {{ r.monitor_location }}
+              {% else %}
+                —
+              {% endif %}
+            </td>
+            <td>
+              {% if r.client_sample_id in linked_sample_ids %}
+                <span class="flag-pill ok">Linked</span>
+              {% else %}
+                <span class="flag-pill no_value">Not yet</span>
+              {% endif %}
+            </td>
+            <td><a href="{{ url_for('amr.detail', id=r.id) }}">View →</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">
+      <p>No Air Monitor Reports yet.</p>
+      <a class="btn" href="{{ url_for('amr.new') }}">+ New Air Monitor Report</a>
+    </div>
+  {% endif %}
+{% endblock %}

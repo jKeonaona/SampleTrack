@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}AMR: {{ amr.client_sample_id }}{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Air Monitor Report: {{ amr.client_sample_id }}</h1>
+    <div style="display: flex; gap: 0.5rem;">
+      <a class="btn secondary" href="{{ url_for('amr.list_amr') }}">Back to list</a>
+      <a class="btn" href="{{ url_for('amr.edit', id=amr.id) }}">Edit</a>
+      {% if current_user.is_authenticated and current_user.is_admin %}
+        <form method="post" action="{{ url_for('amr.delete', id=amr.id) }}"
+              onsubmit="return confirm('Delete this Air Monitor Report?');"
+              style="display: inline;">
+          <button type="submit" class="btn" style="background: var(--danger); border-color: var(--danger);">Delete</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if linked_sample %}
+    <div class="info-block" style="border-color: var(--success); background: #ebf7f0; margin-bottom: 1rem;">
+      Linked to Sample: <strong>{{ linked_sample.client_sample_id }}</strong> →
+      <a href="{{ url_for('samples.detail', sample_id=linked_sample.id) }}">View lab sample</a>
+    </div>
+  {% else %}
+    <div class="info-block" style="margin-bottom: 1rem; color: var(--muted);">
+      Not yet linked to lab data — will auto-link when a Sample with Client Sample ID
+      <strong>{{ amr.client_sample_id }}</strong> is created.
+    </div>
+  {% endif %}
+
+  <h2>Sample Identification</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Client Sample ID</dt><dd>{{ amr.client_sample_id }}</dd>
+      <dt>Job Number</dt><dd>{{ amr.job_number or "—" }}</dd>
+      <dt>Project</dt><dd>
+        {% if amr.project %}
+          <a href="{{ url_for('projects.detail', project_id=amr.project.id) }}">{{ amr.project.project_number }} — {{ amr.project.name }}</a>
+        {% else %}—{% endif %}
+      </dd>
+      <dt>Monitoring Date</dt><dd>{{ amr.monitoring_date or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Equipment</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Pump Serial</dt><dd>{{ amr.pump_serial or "—" }}</dd>
+      <dt>Cassette Number</dt><dd>{{ amr.cassette_number or "—" }}</dd>
+      <dt>Monitoring Phase</dt><dd>{{ amr.monitoring_phase or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Sampling Time</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Time Started</dt><dd>{{ amr.time_started or "—" }} {{ amr.am_pm_started or "" }}</dd>
+      <dt>Time Stopped</dt><dd>{{ amr.time_stopped or "—" }} {{ amr.am_pm_stopped or "" }}</dd>
+      <dt>Total Hours</dt><dd>{{ amr.total_hours if amr.total_hours is not none else "—" }}</dd>
+      <dt>Total Minutes</dt><dd>{{ amr.total_minutes if amr.total_minutes is not none else "—" }}</dd>
+      <dt>Liters per Minute</dt><dd>{{ amr.liters_per_minute or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Calibration</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Calibrated Before</dt><dd>{{ "Yes" if amr.calibrated_before else "No" }}</dd>
+      <dt>Rate (before)</dt><dd>{{ amr.calibrated_before_rate or "—" }}</dd>
+      <dt>By (before)</dt><dd>{{ amr.calibrated_before_by or "—" }}</dd>
+      <dt>Calibrated After</dt><dd>{{ "Yes" if amr.calibrated_after else "No" }}</dd>
+      <dt>Rate (after)</dt><dd>{{ amr.calibrated_after_rate or "—" }}</dd>
+      <dt>By (after)</dt><dd>{{ amr.calibrated_after_by or "—" }}</dd>
+      <dt>Last Calibration Date</dt><dd>{{ amr.last_calibration_date or "—" }}</dd>
+      <dt>Measured Rate</dt><dd>{{ amr.measured_rate or "—" }}</dd>
+      <dt>Used Since Calibration</dt><dd>{{ "Yes" if amr.used_since_calibration else "No" }}</dd>
+    </dl>
+  </div>
+
+  {% if amr.is_personal_sample %}
+    <h2>Personal Sample</h2>
+    <div class="info-block">
+      <dl>
+        <dt>Worker Monitored</dt><dd>{{ amr.worker_monitored or "—" }}</dd>
+        <dt>Job Duties</dt><dd>{{ amr.job_duties or "—" }}</dd>
+        <dt>PPE Worn</dt><dd>{{ amr.ppe_worn or "—" }}</dd>
+        <dt>Cassette Worn Properly</dt><dd>{{ "Yes" if amr.cassette_worn_properly else "No" }}</dd>
+        <dt>Dragged Through Abrasive</dt><dd>{{ "Yes" if amr.dragged_through_abrasive else "No" }}</dd>
+        <dt>Anything Unusual</dt><dd>{{ "Yes" if amr.unusual_happened else "No" }}</dd>
+        {% if amr.unusual_details %}
+          <dt>Unusual Details</dt><dd>{{ amr.unusual_details }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  {% endif %}
+
+  {% if amr.is_area_sample %}
+    <h2>Area Sample</h2>
+    <div class="info-block">
+      <dl>
+        <dt>Monitor Location</dt><dd>{{ amr.monitor_location or "—" }}</dd>
+        <dt>Blasting Location</dt><dd>{{ amr.blasting_location or "—" }}</dd>
+        <dt>Unusual Events</dt><dd>{{ amr.area_unusual_events or "—" }}</dd>
+        <dt>Weather Conditions</dt><dd>{{ amr.weather_conditions or "—" }}</dd>
+        <dt>Temperature</dt><dd>
+          {% if amr.temperature_value %}{{ amr.temperature_value }}°{{ amr.temperature_unit or "" }}{% else %}—{% endif %}
+        </dd>
+        <dt>Wind Speed / Direction</dt><dd>{{ amr.wind_speed_direction or "—" }}</dd>
+      </dl>
+    </div>
+  {% endif %}
+
+  <h2>Personnel and Lab</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Placed By</dt><dd>{{ amr.placed_by or "—" }}</dd>
+      <dt>Removed By</dt><dd>{{ amr.removed_by or "—" }}</dd>
+      <dt>Laboratory Sent To</dt><dd>{{ amr.laboratory_sent_to or "—" }}</dd>
+      <dt>Date Sent to Lab</dt><dd>{{ amr.date_sent_to_lab or "—" }}</dd>
+      <dt>Created</dt><dd>{{ amr.created_at.strftime("%Y-%m-%d %H:%M") if amr.created_at else "—" }}</dd>
+      <dt>Updated</dt><dd>{{ amr.updated_at.strftime("%Y-%m-%d %H:%M") if amr.updated_at else "—" }}</dd>
+    </dl>
+  </div>
+{% endblock %}

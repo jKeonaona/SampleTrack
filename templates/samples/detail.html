@@ -103,6 +103,37 @@
     <p style="color: var(--muted);">No analytical results recorded for this sample.</p>
   {% endif %}
 
+  <h2>Field Air Monitor Report</h2>
+  {% if amr %}
+    <div class="info-block">
+      <p style="margin-top: 0;">
+        <a href="{{ url_for('amr.detail', id=amr.id) }}">View full report →</a>
+      </p>
+      <dl>
+        <dt>Monitoring Phase</dt><dd>{{ amr.monitoring_phase or "—" }}</dd>
+        <dt>Time Started</dt><dd>{{ amr.time_started or "—" }} {{ amr.am_pm_started or "" }}</dd>
+        <dt>Time Stopped</dt><dd>{{ amr.time_stopped or "—" }} {{ amr.am_pm_stopped or "" }}</dd>
+        <dt>Liters per Minute</dt><dd>{{ amr.liters_per_minute or "—" }}</dd>
+        <dt>Calibrated Before</dt><dd>{{ "Yes" if amr.calibrated_before else "No" }}</dd>
+        <dt>Calibrated After</dt><dd>{{ "Yes" if amr.calibrated_after else "No" }}</dd>
+        {% if amr.is_personal_sample %}
+          <dt>Worker Monitored</dt><dd>{{ amr.worker_monitored or "—" }}</dd>
+        {% endif %}
+        {% if amr.is_area_sample %}
+          <dt>Monitor Location</dt><dd>{{ amr.monitor_location or "—" }}</dd>
+        {% endif %}
+        <dt>Blasting Location</dt><dd>{{ amr.blasting_location or "—" }}</dd>
+        <dt>Placed By</dt><dd>{{ amr.placed_by or "—" }}</dd>
+        <dt>Removed By</dt><dd>{{ amr.removed_by or "—" }}</dd>
+      </dl>
+    </div>
+  {% else %}
+    <div class="info-block" style="color: var(--muted);">
+      No field Air Monitor Report on file for this sample.
+      <a href="{{ url_for('amr.new', client_sample_id=sample.client_sample_id) }}">Create one →</a>
+    </div>
+  {% endif %}
+
   {% set ns = namespace(has_any=False) %}
   {% for r in results %}
     {% set ev = result_evaluations.get(r.id) %}

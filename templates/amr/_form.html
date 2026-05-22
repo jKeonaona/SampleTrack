@@ -1,0 +1,313 @@
+<style>
+  .amr-section { margin-top: 1.5rem; }
+  .amr-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .amr-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+  .amr-grid .field { margin-bottom: 0; }
+  .radio-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .radio-row label { font-weight: normal; color: var(--fg); margin-bottom: 0; }
+  .check-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+  .check-row label { margin-bottom: 0; color: var(--fg); }
+  .hint { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+  .inline-row { display: flex; gap: 0.75rem; align-items: flex-end; }
+  .inline-row .field { flex: 1; margin-bottom: 0; }
+  .inline-row .compact { flex: 0 0 auto; }
+</style>
+
+<form class="stacked" method="post" action="{{ form_action }}">
+
+  <h2 class="amr-section">Sample Identification</h2>
+  <div class="info-block">
+    <div class="amr-grid">
+      <div class="field">
+        <label for="client_sample_id">Client Sample ID *</label>
+        <input type="text" id="client_sample_id" name="client_sample_id" required value="{{ form.client_sample_id or '' }}">
+        <div class="hint">Used to auto-link to lab Sample when the analytical report arrives.</div>
+      </div>
+      <div class="field">
+        <label for="job_number">Job Number</label>
+        <input type="text" id="job_number" name="job_number" placeholder="e.g. 55-1633" value="{{ form.job_number or '' }}">
+      </div>
+      <div class="field">
+        <label for="project_id">Project</label>
+        <select id="project_id" name="project_id">
+          <option value="">—</option>
+          {% for p in available_projects %}
+            <option value="{{ p.id }}" {% if form.project_id and form.project_id|string == p.id|string %}selected{% endif %}>{{ p.project_number }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="monitoring_date">Monitoring Date</label>
+        <input type="date" id="monitoring_date" name="monitoring_date" value="{{ form.monitoring_date or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="amr-section">Equipment</h2>
+  <div class="info-block">
+    <div class="amr-grid">
+      <div class="field">
+        <label for="pump_serial">Pump Serial</label>
+        <input type="text" id="pump_serial" name="pump_serial" value="{{ form.pump_serial or '' }}">
+      </div>
+      <div class="field">
+        <label for="cassette_number">Cassette Number</label>
+        <input type="text" id="cassette_number" name="cassette_number" placeholder="X-Y-Z" value="{{ form.cassette_number or '' }}">
+      </div>
+    </div>
+    <div class="field" style="margin-top: 1rem;">
+      <label>Monitoring Phase</label>
+      <div class="radio-row">
+        {% for phase in phase_options %}
+          <label>
+            <input type="radio" name="monitoring_phase" value="{{ phase }}" {% if form.monitoring_phase == phase %}checked{% endif %}>
+            {{ phase }}
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <h2 class="amr-section">Sampling Time</h2>
+  <div class="info-block">
+    <div class="amr-grid">
+      <div class="field">
+        <label for="time_started">Time Started</label>
+        <div class="inline-row">
+          <input type="time" id="time_started" name="time_started" value="{{ form.time_started or '' }}">
+          <div class="radio-row compact">
+            {% for ap in am_pm_options %}
+              <label>
+                <input type="radio" name="am_pm_started" value="{{ ap }}" {% if form.am_pm_started == ap %}checked{% endif %}>
+                {{ ap }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="time_stopped">Time Stopped</label>
+        <div class="inline-row">
+          <input type="time" id="time_stopped" name="time_stopped" value="{{ form.time_stopped or '' }}">
+          <div class="radio-row compact">
+            {% for ap in am_pm_options %}
+              <label>
+                <input type="radio" name="am_pm_stopped" value="{{ ap }}" {% if form.am_pm_stopped == ap %}checked{% endif %}>
+                {{ ap }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="amr-grid three" style="margin-top: 1rem;">
+      <div class="field">
+        <label for="total_hours">Total Hours</label>
+        <input type="number" min="0" id="total_hours" name="total_hours" value="{{ form.total_hours if form.total_hours not in (None, '') else '' }}">
+      </div>
+      <div class="field">
+        <label for="total_minutes">Total Minutes</label>
+        <input type="number" min="0" id="total_minutes" name="total_minutes" value="{{ form.total_minutes if form.total_minutes not in (None, '') else '' }}">
+      </div>
+      <div class="field">
+        <label for="liters_per_minute">Liters per Minute</label>
+        <input type="text" id="liters_per_minute" name="liters_per_minute" placeholder="e.g. 2 L/min" value="{{ form.liters_per_minute or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="amr-section">Calibration</h2>
+  <div class="info-block">
+    <div class="check-row">
+      <input type="checkbox" id="calibrated_before" name="calibrated_before" {% if form.calibrated_before %}checked{% endif %}>
+      <label for="calibrated_before">Calibrated before sampling</label>
+    </div>
+    <div class="amr-grid">
+      <div class="field">
+        <label for="calibrated_before_rate">Calibration Rate (before)</label>
+        <input type="text" id="calibrated_before_rate" name="calibrated_before_rate" value="{{ form.calibrated_before_rate or '' }}">
+      </div>
+      <div class="field">
+        <label for="calibrated_before_by">Calibrated by (before)</label>
+        <input type="text" id="calibrated_before_by" name="calibrated_before_by" value="{{ form.calibrated_before_by or '' }}">
+      </div>
+    </div>
+
+    <div class="check-row" style="margin-top: 1rem;">
+      <input type="checkbox" id="calibrated_after" name="calibrated_after" {% if form.calibrated_after %}checked{% endif %}>
+      <label for="calibrated_after">Calibrated after sampling</label>
+    </div>
+    <div class="amr-grid">
+      <div class="field">
+        <label for="calibrated_after_rate">Calibration Rate (after)</label>
+        <input type="text" id="calibrated_after_rate" name="calibrated_after_rate" value="{{ form.calibrated_after_rate or '' }}">
+      </div>
+      <div class="field">
+        <label for="calibrated_after_by">Calibrated by (after)</label>
+        <input type="text" id="calibrated_after_by" name="calibrated_after_by" value="{{ form.calibrated_after_by or '' }}">
+      </div>
+    </div>
+
+    <div class="amr-grid" style="margin-top: 1rem;">
+      <div class="field">
+        <label for="last_calibration_date">Last Calibration Date</label>
+        <input type="date" id="last_calibration_date" name="last_calibration_date" value="{{ form.last_calibration_date or '' }}">
+      </div>
+      <div class="field">
+        <label for="measured_rate">Measured Rate</label>
+        <input type="text" id="measured_rate" name="measured_rate" value="{{ form.measured_rate or '' }}">
+      </div>
+    </div>
+    <div class="check-row" style="margin-top: 1rem;">
+      <input type="checkbox" id="used_since_calibration" name="used_since_calibration" {% if form.used_since_calibration %}checked{% endif %}>
+      <label for="used_since_calibration">Pump used since last calibration</label>
+    </div>
+  </div>
+
+  <h2 class="amr-section">Sample Type</h2>
+  <div class="info-block">
+    <div class="radio-row">
+      <label>
+        <input type="radio" name="sample_type" value="personal" id="sample_type_personal"
+          {% if form.is_personal_sample %}checked{% endif %}>
+        Personal
+      </label>
+      <label>
+        <input type="radio" name="sample_type" value="area" id="sample_type_area"
+          {% if form.is_area_sample %}checked{% endif %}>
+        Area
+      </label>
+    </div>
+  </div>
+
+  <h2 class="amr-section" id="personal-header">Personal Sample</h2>
+  <div class="info-block" id="personal-section">
+    <div class="field">
+      <label for="worker_monitored">Worker Monitored</label>
+      <input type="text" id="worker_monitored" name="worker_monitored" value="{{ form.worker_monitored or '' }}">
+    </div>
+    <div class="field">
+      <label for="job_duties">Job Duties</label>
+      <textarea id="job_duties" name="job_duties" rows="3">{{ form.job_duties or '' }}</textarea>
+    </div>
+    <div class="field">
+      <label for="ppe_worn">PPE Worn</label>
+      <textarea id="ppe_worn" name="ppe_worn" rows="2">{{ form.ppe_worn or '' }}</textarea>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="cassette_worn_properly" name="cassette_worn_properly" {% if form.cassette_worn_properly %}checked{% endif %}>
+      <label for="cassette_worn_properly">Cassette worn properly (in breathing zone)</label>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="dragged_through_abrasive" name="dragged_through_abrasive" {% if form.dragged_through_abrasive %}checked{% endif %}>
+      <label for="dragged_through_abrasive">Cassette dragged through abrasive material</label>
+    </div>
+    <div class="check-row">
+      <input type="checkbox" id="unusual_happened" name="unusual_happened" {% if form.unusual_happened %}checked{% endif %}>
+      <label for="unusual_happened">Anything unusual happen during sampling?</label>
+    </div>
+    <div class="field">
+      <label for="unusual_details">Unusual Details</label>
+      <textarea id="unusual_details" name="unusual_details" rows="2">{{ form.unusual_details or '' }}</textarea>
+    </div>
+  </div>
+
+  <h2 class="amr-section" id="area-header">Area Sample</h2>
+  <div class="info-block" id="area-section">
+    <div class="field">
+      <label for="monitor_location">Monitor Location</label>
+      <input type="text" id="monitor_location" name="monitor_location" value="{{ form.monitor_location or '' }}">
+    </div>
+    <div class="field">
+      <label for="blasting_location">Blasting Location</label>
+      <input type="text" id="blasting_location" name="blasting_location" value="{{ form.blasting_location or '' }}">
+    </div>
+    <div class="field">
+      <label for="area_unusual_events">Unusual Events</label>
+      <textarea id="area_unusual_events" name="area_unusual_events" rows="2">{{ form.area_unusual_events or '' }}</textarea>
+    </div>
+    <div class="field">
+      <label for="weather_conditions">Weather Conditions</label>
+      <input type="text" id="weather_conditions" name="weather_conditions" value="{{ form.weather_conditions or '' }}">
+    </div>
+    <div class="amr-grid">
+      <div class="field">
+        <label for="temperature_value">Temperature</label>
+        <div class="inline-row">
+          <input type="text" id="temperature_value" name="temperature_value" value="{{ form.temperature_value or '' }}">
+          <div class="radio-row compact">
+            {% for u in temp_unit_options %}
+              <label>
+                <input type="radio" name="temperature_unit" value="{{ u }}" {% if form.temperature_unit == u %}checked{% endif %}>
+                °{{ u }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="wind_speed_direction">Wind Speed / Direction</label>
+        <input type="text" id="wind_speed_direction" name="wind_speed_direction" value="{{ form.wind_speed_direction or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="amr-section">Personnel and Lab</h2>
+  <div class="info-block">
+    <div class="amr-grid">
+      <div class="field">
+        <label for="placed_by">Placed By</label>
+        <input type="text" id="placed_by" name="placed_by" value="{{ form.placed_by or '' }}">
+      </div>
+      <div class="field">
+        <label for="removed_by">Removed By</label>
+        <input type="text" id="removed_by" name="removed_by" value="{{ form.removed_by or '' }}">
+      </div>
+      <div class="field">
+        <label for="laboratory_sent_to">Laboratory Sent To</label>
+        <input type="text" id="laboratory_sent_to" name="laboratory_sent_to" value="{{ form.laboratory_sent_to or '' }}">
+      </div>
+      <div class="field">
+        <label for="date_sent_to_lab">Date Sent to Lab</label>
+        <input type="date" id="date_sent_to_lab" name="date_sent_to_lab" value="{{ form.date_sent_to_lab or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="actions" style="margin-top: 1.5rem;">
+    <button type="submit" class="btn">{{ submit_label or 'Save' }}</button>
+    {% if cancel_url %}
+      <a class="btn secondary" href="{{ cancel_url }}">Cancel</a>
+    {% endif %}
+  </div>
+</form>
+
+<script>
+  (function () {
+    var personalRadio = document.getElementById('sample_type_personal');
+    var areaRadio = document.getElementById('sample_type_area');
+    var personalHeader = document.getElementById('personal-header');
+    var personalSection = document.getElementById('personal-section');
+    var areaHeader = document.getElementById('area-header');
+    var areaSection = document.getElementById('area-section');
+
+    function applyVisibility() {
+      var showPersonal = personalRadio && personalRadio.checked;
+      var showArea = areaRadio && areaRadio.checked;
+      var anyChecked = showPersonal || showArea;
+
+      personalHeader.style.display = (!anyChecked || showPersonal) ? '' : 'none';
+      personalSection.style.display = (!anyChecked || showPersonal) ? '' : 'none';
+      areaHeader.style.display = (!anyChecked || showArea) ? '' : 'none';
+      areaSection.style.display = (!anyChecked || showArea) ? '' : 'none';
+    }
+
+    if (personalRadio) personalRadio.addEventListener('change', applyVisibility);
+    if (areaRadio) areaRadio.addEventListener('change', applyVisibility);
+    applyVisibility();
+  })();
+</script>

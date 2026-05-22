@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Air Monitor Report{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Edit Air Monitor Report</h1>
+    <a class="btn secondary" href="{{ url_for('amr.detail', id=amr.id) }}">Cancel</a>
+  </div>
+
+  {% set form_action = url_for('amr.edit_save', id=amr.id) %}
+  {% set submit_label = 'Save Changes' %}
+  {% set cancel_url = url_for('amr.detail', id=amr.id) %}
+  {% include 'amr/_form.html' %}
+{% endblock %}

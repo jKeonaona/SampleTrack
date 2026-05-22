@@ -102,6 +102,68 @@ class Threshold(db.Model):
     )
 
 
+class AirMonitorReport(db.Model):
+    __tablename__ = "air_monitor_report"
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True, index=True)
+    client_sample_id = db.Column(db.String(100), nullable=False, index=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=True, index=True)
+    job_number = db.Column(db.String(50), nullable=True)
+
+    monitoring_date = db.Column(db.String(20), nullable=True)
+    pump_serial = db.Column(db.String(100), nullable=True)
+    cassette_number = db.Column(db.String(100), nullable=True)
+    monitoring_phase = db.Column(db.String(20), nullable=True)
+
+    time_started = db.Column(db.String(10), nullable=True)
+    am_pm_started = db.Column(db.String(2), nullable=True)
+    time_stopped = db.Column(db.String(10), nullable=True)
+    am_pm_stopped = db.Column(db.String(2), nullable=True)
+    total_hours = db.Column(db.Integer, nullable=True)
+    total_minutes = db.Column(db.Integer, nullable=True)
+    liters_per_minute = db.Column(db.String(20), nullable=True)
+
+    calibrated_before = db.Column(db.Boolean, nullable=True)
+    calibrated_before_rate = db.Column(db.String(20), nullable=True)
+    calibrated_before_by = db.Column(db.String(100), nullable=True)
+    calibrated_after = db.Column(db.Boolean, nullable=True)
+    calibrated_after_rate = db.Column(db.String(20), nullable=True)
+    calibrated_after_by = db.Column(db.String(100), nullable=True)
+    last_calibration_date = db.Column(db.String(20), nullable=True)
+    measured_rate = db.Column(db.String(20), nullable=True)
+    used_since_calibration = db.Column(db.Boolean, nullable=True)
+
+    is_personal_sample = db.Column(db.Boolean, nullable=True)
+    worker_monitored = db.Column(db.String(200), nullable=True)
+    job_duties = db.Column(db.Text, nullable=True)
+    ppe_worn = db.Column(db.Text, nullable=True)
+    cassette_worn_properly = db.Column(db.Boolean, nullable=True)
+    dragged_through_abrasive = db.Column(db.Boolean, nullable=True)
+    unusual_happened = db.Column(db.Boolean, nullable=True)
+    unusual_details = db.Column(db.Text, nullable=True)
+
+    is_area_sample = db.Column(db.Boolean, nullable=True)
+    monitor_location = db.Column(db.String(500), nullable=True)
+    blasting_location = db.Column(db.String(500), nullable=True)
+    area_unusual_events = db.Column(db.Text, nullable=True)
+    weather_conditions = db.Column(db.String(500), nullable=True)
+    temperature_value = db.Column(db.String(20), nullable=True)
+    temperature_unit = db.Column(db.String(2), nullable=True)
+    wind_speed_direction = db.Column(db.String(200), nullable=True)
+
+    placed_by = db.Column(db.String(200), nullable=True)
+    removed_by = db.Column(db.String(200), nullable=True)
+    laboratory_sent_to = db.Column(db.String(200), nullable=True)
+    date_sent_to_lab = db.Column(db.String(20), nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    created_by = db.relationship("User", foreign_keys=[created_by_user_id])
+    project = db.relationship("Project", foreign_keys=[project_id])
+
+
 class Result(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sample_id = db.Column(db.Integer, db.ForeignKey("sample.id"), nullable=False, index=True)

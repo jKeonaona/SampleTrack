@@ -10,6 +10,7 @@ from routes.uploads import uploads_bp
 from routes.auth import auth_bp
 from routes.admin import admin_bp
 from routes.samples import samples_bp
+from routes.amr import amr_bp
 
 load_dotenv()
 
@@ -35,6 +36,7 @@ app.register_blueprint(uploads_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(samples_bp)
+app.register_blueprint(amr_bp)
 
 
 @app.route("/")
