@@ -39,7 +39,8 @@
     .amr-save-indicator.saving { color: var(--muted); }
     .amr-save-indicator.saved { color: var(--success); }
     .amr-save-indicator.error { color: var(--danger); }
-    .amr-inline-form h3 {
+    .amr-inline-form h3,
+    .fsr-inline-form h3 {
       margin: 1rem 0 0.5rem;
       font-size: 1rem;
       color: var(--muted);
@@ -51,7 +52,13 @@
     .amr-inline-form input[type="time"],
     .amr-inline-form input[type="number"],
     .amr-inline-form select,
-    .amr-inline-form textarea {
+    .amr-inline-form textarea,
+    .fsr-inline-form input[type="text"],
+    .fsr-inline-form input[type="date"],
+    .fsr-inline-form input[type="time"],
+    .fsr-inline-form input[type="number"],
+    .fsr-inline-form select,
+    .fsr-inline-form textarea {
       width: 100%;
       padding: 0.4rem 0.6rem;
       font: inherit;
@@ -59,13 +66,15 @@
       border-radius: 4px;
       background: var(--surface);
     }
-    .amr-inline-form label {
+    .amr-inline-form label,
+    .fsr-inline-form label {
       display: block;
       font-size: 0.85rem;
       color: var(--muted);
       margin-bottom: 0.25rem;
     }
-    .amr-inline-form .field { margin-bottom: 0.75rem; }
+    .amr-inline-form .field,
+    .fsr-inline-form .field { margin-bottom: 0.75rem; }
   </style>
 
   <div class="toolbar">
@@ -74,10 +83,10 @@
       <a class="btn secondary" href="{{ url_for('events.list_events') }}">Back to events</a>
       <form method="post" action="{{ url_for('events.delete_event', event_id=event.id) }}"
             style="display: inline;"
-            {% if amr_count == 0 and result_count == 0 %}
+            {% if amr_count == 0 and fsr_count == 0 and result_count == 0 %}
               onsubmit="return confirm('Delete this test event and its {{ samples|length }} generated sample IDs? This cannot be undone.')"
             {% else %}
-              onsubmit="return confirm('Delete this event? This will remove: {{ samples|length }} samples, {{ amr_count }} field reports, and {{ result_count }} analytical results. This cannot be undone.')"
+              onsubmit="return confirm('Delete this event? This will remove: {{ samples|length }} samples, {{ amr_count }} field air monitor reports, {{ fsr_count }} field sample records, and {{ result_count }} analytical results. This cannot be undone.')"
             {% endif %}>
         <button type="submit" class="btn" style="background: var(--danger); border-color: var(--danger);">Delete Event</button>
       </form>
@@ -95,12 +104,20 @@
       <dt>Event Date</dt><dd>{{ event.event_date or "—" }}</dd>
       <dt>Total Samples</dt><dd>{{ samples|length }}</dd>
       <dt>Blanks</dt><dd>{{ blanks_count }}</dd>
-      <dt>AMRs Completed</dt><dd>{{ amr_count }} / {{ samples|length - blanks_count }}</dd>
+      {% if form_type == 'amr' %}
+        <dt>AMRs Started</dt><dd>{{ amr_count }} / {{ samples|length - blanks_count }}</dd>
+      {% else %}
+        <dt>Field Records Started</dt><dd>{{ fsr_count }} / {{ samples|length - blanks_count }}</dd>
+      {% endif %}
       {% if event.notes %}
         <dt>Notes</dt><dd>{{ event.notes }}</dd>
       {% endif %}
     </dl>
   </div>
+
+  {% set record_label_full = "Air Monitor Report" if form_type == 'amr' else "Field Sample Record" %}
+  {% set record_label_short = "AMR" if form_type == 'amr' else "Field Record" %}
+  {% set blank_label = "Blank (no AMR)" if form_type == 'amr' else "Blank (no record)" %}
 
   <h2>Samples</h2>
   <table class="data samples-table">
@@ -108,14 +125,18 @@
       <tr>
         <th>Sample ID</th>
         <th>Blank?</th>
-        <th>AMR Status</th>
+        <th>{{ record_label_short }} Status</th>
         <th>Lab Status</th>
         <th class="actions"></th>
       </tr>
     </thead>
     <tbody>
       {% for s in samples %}
-        {% set amr = amr_by_sample_id.get(s.client_sample_id) %}
+        {% if form_type == 'amr' %}
+          {% set record = amr_by_sample_id.get(s.client_sample_id) %}
+        {% else %}
+          {% set record = fsr_by_sample_id.get(s.client_sample_id) %}
+        {% endif %}
         <tr id="sample-row-{{ s.id }}" data-sample-id="{{ s.id }}">
           <td><strong>{{ s.client_sample_id }}</strong></td>
           <td>
@@ -125,10 +146,10 @@
                    {% if s.is_blank %}checked{% endif %}
                    onchange="toggleBlank({{ s.id }}, {{ event.id }}, this.checked)">
           </td>
-          <td class="amr-status-cell">
+          <td class="record-status-cell">
             {% if s.is_blank %}
-              <span class="status-pill">Blank (no AMR)</span>
-            {% elif amr %}
+              <span class="status-pill">{{ blank_label }}</span>
+            {% elif record %}
               <span class="flag-pill ok">Started</span>
             {% else %}
               <span class="flag-pill no_value">Not started</span>
@@ -142,21 +163,30 @@
             {% endif %}
           </td>
           <td class="actions">
-            <button type="button" class="btn secondary amr-toggle-btn"
+            <button type="button" class="btn secondary record-toggle-btn"
                     data-sample-id="{{ s.id }}"
-                    onclick="expandAmr({{ s.id }}, {{ event.id }})"
+                    data-form-type="{{ form_type }}"
+                    data-record-label-short="{{ record_label_short }}"
+                    onclick="expandRecord({{ s.id }}, {{ event.id }}, '{{ form_type }}')"
                     {% if s.is_blank %}disabled{% endif %}>
-              {% if amr %}Edit Field Report{% else %}Fill out Field Report{% endif %}
+              {% if record %}Edit {{ record_label_short }}{% else %}Fill out {{ record_label_short }}{% endif %}
             </button>
           </td>
         </tr>
-        <tr class="amr-form-row" id="amr-form-row-{{ s.id }}" style="display: none;">
+        <tr class="record-form-row" id="record-form-row-{{ s.id }}" style="display: none;">
           <td colspan="5">
-            <div class="amr-form-placeholder" id="amr-form-placeholder-{{ s.id }}">
-              {% if amr %}
-                {% set form = amr_forms.get(s.id) %}
+            <div class="record-form-placeholder" id="record-form-placeholder-{{ s.id }}">
+              {% if record %}
                 {% set sample = s %}
-                {% include 'events/_inline_amr_form.html' %}
+                {% if form_type == 'amr' %}
+                  {% set form = amr_forms.get(s.id) %}
+                  {% set amr = record %}
+                  {% include 'events/_inline_amr_form.html' %}
+                {% else %}
+                  {% set form = fsr_forms.get(s.id) %}
+                  {% set fsr = record %}
+                  {% include 'events/_inline_fsr_form.html' %}
+                {% endif %}
               {% endif %}
             </div>
           </td>
@@ -166,8 +196,14 @@
   </table>
 
   <script>
+    const BLANK_LABEL = {{ blank_label|tojson }};
+
     function csrfHeaders() {
       return { "X-Requested-With": "XMLHttpRequest" };
+    }
+
+    function findFormInPlaceholder(placeholder) {
+      return placeholder.querySelector(".amr-inline-form, .fsr-inline-form");
     }
 
     async function toggleBlank(sampleId, eventId, isBlank) {
@@ -181,24 +217,27 @@
         const data = await res.json();
 
         const row = document.getElementById(`sample-row-${sampleId}`);
-        const statusCell = row.querySelector(".amr-status-cell");
-        const btn = row.querySelector(".amr-toggle-btn");
-        const formRow = document.getElementById(`amr-form-row-${sampleId}`);
-        const placeholder = document.getElementById(`amr-form-placeholder-${sampleId}`);
+        const statusCell = row.querySelector(".record-status-cell");
+        const btn = row.querySelector(".record-toggle-btn");
+        const labelShort = btn.dataset.recordLabelShort;
+        const formRow = document.getElementById(`record-form-row-${sampleId}`);
+        const placeholder = document.getElementById(`record-form-placeholder-${sampleId}`);
 
         if (data.is_blank) {
-          statusCell.innerHTML = '<span class="status-pill">Blank (no AMR)</span>';
+          statusCell.innerHTML = `<span class="status-pill">${BLANK_LABEL}</span>`;
           btn.disabled = true;
           formRow.style.display = "none";
-          if (data.had_amr_deleted) placeholder.innerHTML = "";
+          if (data.had_record_deleted || data.had_amr_deleted || data.had_fsr_deleted) {
+            placeholder.innerHTML = "";
+          }
         } else {
           btn.disabled = false;
-          if (placeholder.querySelector(".amr-inline-form")) {
+          if (findFormInPlaceholder(placeholder)) {
             statusCell.innerHTML = '<span class="flag-pill ok">Started</span>';
-            btn.textContent = "Edit Field Report";
+            btn.textContent = `Edit ${labelShort}`;
           } else {
             statusCell.innerHTML = '<span class="flag-pill no_value">Not started</span>';
-            btn.textContent = "Fill out Field Report";
+            btn.textContent = `Fill out ${labelShort}`;
           }
         }
       } catch (err) {
@@ -207,31 +246,36 @@
       }
     }
 
-    async function expandAmr(sampleId, eventId) {
-      const formRow = document.getElementById(`amr-form-row-${sampleId}`);
-      const placeholder = document.getElementById(`amr-form-placeholder-${sampleId}`);
-      const existingForm = placeholder.querySelector(".amr-inline-form");
+    async function expandRecord(sampleId, eventId, formType) {
+      const formRow = document.getElementById(`record-form-row-${sampleId}`);
+      const placeholder = document.getElementById(`record-form-placeholder-${sampleId}`);
+      const existingForm = findFormInPlaceholder(placeholder);
 
       if (existingForm) {
         formRow.style.display = formRow.style.display === "none" ? "" : "none";
         return;
       }
 
+      const endpoint = formType === "amr"
+        ? `/events/${eventId}/sample/${sampleId}/create-amr`
+        : `/events/${eventId}/sample/${sampleId}/create-fsr`;
+
       try {
-        const res = await fetch(`/events/${eventId}/sample/${sampleId}/create-amr`, {
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: csrfHeaders(),
         });
-        if (!res.ok) throw new Error("create-amr failed");
+        if (!res.ok) throw new Error(`create-${formType} failed`);
         const data = await res.json();
         placeholder.innerHTML = data.html;
-        wireForm(placeholder.querySelector(".amr-inline-form"));
+        wireForm(findFormInPlaceholder(placeholder));
         formRow.style.display = "";
 
         const row = document.getElementById(`sample-row-${sampleId}`);
-        const btn = row.querySelector(".amr-toggle-btn");
-        const statusCell = row.querySelector(".amr-status-cell");
-        btn.textContent = "Edit Field Report";
+        const btn = row.querySelector(".record-toggle-btn");
+        const labelShort = btn.dataset.recordLabelShort;
+        const statusCell = row.querySelector(".record-status-cell");
+        btn.textContent = `Edit ${labelShort}`;
         statusCell.innerHTML = '<span class="flag-pill ok">Started</span>';
       } catch (err) {
         console.error(err);
@@ -241,7 +285,7 @@
 
     function wireForm(container) {
       if (!container) return;
-      const form = container.querySelector("form.amr-form");
+      const form = container.querySelector("form.amr-form, form.fsr-form");
       const indicator = container.querySelector('[data-role="indicator"]');
       wireSectionToggle(container);
       wireAutoSave(form, indicator);
@@ -300,6 +344,6 @@
       }
     }
 
-    document.querySelectorAll(".amr-inline-form").forEach(wireForm);
+    document.querySelectorAll(".amr-inline-form, .fsr-inline-form").forEach(wireForm);
   </script>
 {% endblock %}

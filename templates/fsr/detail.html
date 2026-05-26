@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Field Sample Record: {{ fsr.client_sample_id }}{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Field Sample Record: {{ fsr.client_sample_id }}</h1>
+    <div style="display: flex; gap: 0.5rem;">
+      <a class="btn secondary" href="{{ url_for('fsr.list_fsr') }}">Back to list</a>
+      <a class="btn" href="{{ url_for('fsr.edit', id=fsr.id) }}">Edit</a>
+      {% if current_user.is_authenticated and current_user.is_admin %}
+        <form method="post" action="{{ url_for('fsr.delete', id=fsr.id) }}"
+              onsubmit="return confirm('Delete this Field Sample Record?');"
+              style="display: inline;">
+          <button type="submit" class="btn" style="background: var(--danger); border-color: var(--danger);">Delete</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if linked_sample %}
+    <div class="info-block" style="border-color: var(--success); background: #ebf7f0; margin-bottom: 1rem;">
+      Linked to Sample: <strong>{{ linked_sample.client_sample_id }}</strong> →
+      <a href="{{ url_for('samples.detail', sample_id=linked_sample.id) }}">View lab sample</a>
+    </div>
+  {% else %}
+    <div class="info-block" style="margin-bottom: 1rem; color: var(--muted);">
+      Not yet linked to lab data — will auto-link when a Sample with Client Sample ID
+      <strong>{{ fsr.client_sample_id }}</strong> is created.
+    </div>
+  {% endif %}
+
+  <h2>Sample Identification</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Client Sample ID</dt><dd>{{ fsr.client_sample_id }}</dd>
+      <dt>Job Number</dt><dd>{{ fsr.job_number or "—" }}</dd>
+      <dt>Project</dt><dd>
+        {% if fsr.project %}
+          <a href="{{ url_for('projects.detail', project_id=fsr.project.id) }}">{{ fsr.project.project_number }} — {{ fsr.project.name }}</a>
+        {% else %}—{% endif %}
+      </dd>
+      <dt>Collection Date</dt><dd>{{ fsr.collection_date or "—" }}</dd>
+      <dt>Collection Time</dt><dd>{{ fsr.collection_time or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Collection Details</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Collected By</dt><dd>{{ fsr.collected_by or "—" }}</dd>
+      <dt>Location</dt><dd>{{ fsr.location_description or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Matrix-Specific Details</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Notes</dt><dd>{{ fsr.matrix_specific_notes or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Analytical Request</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Methods Requested</dt><dd>{{ fsr.analytical_methods_requested or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Lab Handoff</h2>
+  <div class="info-block">
+    <dl>
+      <dt>Laboratory Sent To</dt><dd>{{ fsr.laboratory_sent_to or "—" }}</dd>
+      <dt>Date Sent to Lab</dt><dd>{{ fsr.date_sent_to_lab or "—" }}</dd>
+    </dl>
+  </div>
+
+  <h2>Notes</h2>
+  <div class="info-block">
+    <dl>
+      <dt>General Notes</dt><dd>{{ fsr.general_notes or "—" }}</dd>
+      <dt>Created</dt><dd>{{ fsr.created_at.strftime("%Y-%m-%d %H:%M") if fsr.created_at else "—" }}</dd>
+      <dt>Updated</dt><dd>{{ fsr.updated_at.strftime("%Y-%m-%d %H:%M") if fsr.updated_at else "—" }}</dd>
+    </dl>
+  </div>
+{% endblock %}

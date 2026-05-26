@@ -186,6 +186,36 @@ class AirMonitorReport(db.Model):
     project = db.relationship("Project", foreign_keys=[project_id])
 
 
+class FieldSampleRecord(db.Model):
+    __tablename__ = "field_sample_record"
+
+    id = db.Column(db.Integer, primary_key=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    client_sample_id = db.Column(db.String(100), nullable=False, index=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=True)
+    job_number = db.Column(db.String(50), nullable=True)
+
+    collection_date = db.Column(db.String(20), nullable=True)
+    collection_time = db.Column(db.String(10), nullable=True)
+    collected_by = db.Column(db.String(200), nullable=True)
+    location_description = db.Column(db.Text, nullable=True)
+
+    matrix_specific_notes = db.Column(db.Text, nullable=True)
+
+    analytical_methods_requested = db.Column(db.Text, nullable=True)
+
+    laboratory_sent_to = db.Column(db.String(200), nullable=True)
+    date_sent_to_lab = db.Column(db.String(20), nullable=True)
+
+    general_notes = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    creator = db.relationship("User", foreign_keys=[created_by_user_id])
+    project = db.relationship("Project", foreign_keys=[project_id])
+
+
 class Result(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     sample_id = db.Column(db.Integer, db.ForeignKey("sample.id"), nullable=False, index=True)

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}New Field Sample Record{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>New Field Sample Record</h1>
+    <a class="btn secondary" href="{{ url_for('fsr.list_fsr') }}">Cancel</a>
+  </div>
+
+  {% set form_action = url_for('fsr.create') %}
+  {% set submit_label = 'Create Record' %}
+  {% set cancel_url = url_for('fsr.list_fsr') %}
+  {% include 'fsr/_form.html' %}
+{% endblock %}

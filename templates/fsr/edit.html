@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Field Sample Record{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Edit Field Sample Record</h1>
+    <a class="btn secondary" href="{{ url_for('fsr.detail', id=fsr.id) }}">Cancel</a>
+  </div>
+
+  {% set form_action = url_for('fsr.edit_save', id=fsr.id) %}
+  {% set submit_label = 'Save Changes' %}
+  {% set cancel_url = url_for('fsr.detail', id=fsr.id) %}
+  {% include 'fsr/_form.html' %}
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Field Sample Records{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Field Sample Records</h1>
+    <a class="btn" href="{{ url_for('fsr.new') }}">+ New Field Sample Record</a>
+  </div>
+
+  <p class="subtitle">
+    Showing {{ records|length }} record{% if records|length != 1 %}s{% endif %}.
+  </p>
+
+  {% if records %}
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Collection Date</th>
+          <th>Client Sample ID</th>
+          <th>Job Number</th>
+          <th>Location</th>
+          <th>Linked?</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in records %}
+          <tr>
+            <td>{{ r.collection_date or "—" }}</td>
+            <td><a href="{{ url_for('fsr.detail', id=r.id) }}">{{ r.client_sample_id }}</a></td>
+            <td>{{ r.job_number or "—" }}</td>
+            <td>{{ (r.location_description or "")[:60] }}{% if r.location_description and r.location_description|length > 60 %}…{% endif %}</td>
+            <td>
+              {% if r.client_sample_id in linked_sample_ids %}
+                <span class="flag-pill ok">Linked</span>
+              {% else %}
+                <span class="flag-pill no_value">Not yet</span>
+              {% endif %}
+            </td>
+            <td><a href="{{ url_for('fsr.detail', id=r.id) }}">View →</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">
+      <p>No Field Sample Records yet.</p>
+      <a class="btn" href="{{ url_for('fsr.new') }}">+ New Field Sample Record</a>
+    </div>
+  {% endif %}
+{% endblock %}

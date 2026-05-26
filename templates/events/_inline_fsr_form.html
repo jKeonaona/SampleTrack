@@ -1,0 +1,91 @@
+<div class="fsr-inline-form" data-fsr-id="{{ fsr.id }}" data-sample-id="{{ sample.id }}">
+  <form method="post" action="{{ url_for('fsr.edit_save', id=fsr.id) }}" class="fsr-form stacked">
+
+    <div class="amr-form-header">
+      <strong>Field Sample Record for {{ sample.client_sample_id }}</strong>
+      <span class="amr-save-indicator" data-role="indicator"></span>
+      <a class="amr-form-fulllink" href="{{ url_for('fsr.detail', id=fsr.id) }}">Full page →</a>
+    </div>
+
+    <h3>Sample Identification</h3>
+    <div class="info-block">
+      <div class="amr-grid">
+        <div class="field">
+          <label>Client Sample ID</label>
+          <input type="text" name="client_sample_id" required value="{{ form.client_sample_id or '' }}">
+        </div>
+        <div class="field">
+          <label>Job Number</label>
+          <input type="text" name="job_number" value="{{ form.job_number or '' }}">
+        </div>
+        <div class="field">
+          <label>Project</label>
+          <select name="project_id">
+            <option value="">—</option>
+            {% for p in available_projects %}
+              <option value="{{ p.id }}" {% if form.project_id and form.project_id|string == p.id|string %}selected{% endif %}>{{ p.project_number }} — {{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Collection Date</label>
+          <input type="date" name="collection_date" value="{{ form.collection_date or '' }}">
+        </div>
+        <div class="field">
+          <label>Collection Time</label>
+          <input type="time" name="collection_time" value="{{ form.collection_time or '' }}">
+        </div>
+      </div>
+    </div>
+
+    <h3>Collection Details</h3>
+    <div class="info-block">
+      <div class="field">
+        <label>Collected By</label>
+        <input type="text" name="collected_by" value="{{ form.collected_by or '' }}">
+      </div>
+      <div class="field">
+        <label>Location Description</label>
+        <textarea name="location_description" rows="2">{{ form.location_description or '' }}</textarea>
+      </div>
+    </div>
+
+    <h3>Matrix-Specific Details</h3>
+    <div class="info-block">
+      <div class="field">
+        <label>Matrix-Specific Notes</label>
+        <textarea name="matrix_specific_notes" rows="2" placeholder="Soil depth, wipe surface type, paint chip component, etc.">{{ form.matrix_specific_notes or '' }}</textarea>
+      </div>
+    </div>
+
+    <h3>Analytical Request</h3>
+    <div class="info-block">
+      <div class="field">
+        <label>Methods Requested</label>
+        <textarea name="analytical_methods_requested" rows="2" placeholder="TTLC, STLC, TCLP, Lead by N9100, etc.">{{ form.analytical_methods_requested or '' }}</textarea>
+      </div>
+    </div>
+
+    <h3>Lab Handoff</h3>
+    <div class="info-block">
+      <div class="amr-grid">
+        <div class="field">
+          <label>Laboratory Sent To</label>
+          <input type="text" name="laboratory_sent_to" value="{{ form.laboratory_sent_to or '' }}">
+        </div>
+        <div class="field">
+          <label>Date Sent to Lab</label>
+          <input type="date" name="date_sent_to_lab" value="{{ form.date_sent_to_lab or '' }}">
+        </div>
+      </div>
+    </div>
+
+    <h3>Notes</h3>
+    <div class="info-block">
+      <div class="field">
+        <label>General Notes</label>
+        <textarea name="general_notes" rows="2">{{ form.general_notes or '' }}</textarea>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,104 @@
+<style>
+  .fsr-section { margin-top: 1.5rem; }
+  .fsr-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .fsr-grid .field { margin-bottom: 0; }
+  .hint { color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem; }
+</style>
+
+<form class="stacked" method="post" action="{{ form_action }}">
+
+  <h2 class="fsr-section">Sample Identification</h2>
+  <div class="info-block">
+    <div class="fsr-grid">
+      <div class="field">
+        <label for="client_sample_id">Client Sample ID *</label>
+        <input type="text" id="client_sample_id" name="client_sample_id" required value="{{ form.client_sample_id or '' }}">
+        <div class="hint">Used to auto-link to lab Sample when the analytical report arrives.</div>
+      </div>
+      <div class="field">
+        <label for="job_number">Job Number</label>
+        <input type="text" id="job_number" name="job_number" placeholder="e.g. 55-1633" value="{{ form.job_number or '' }}">
+      </div>
+      <div class="field">
+        <label for="project_id">Project</label>
+        <select id="project_id" name="project_id">
+          <option value="">—</option>
+          {% for p in available_projects %}
+            <option value="{{ p.id }}" {% if form.project_id and form.project_id|string == p.id|string %}selected{% endif %}>{{ p.project_number }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="collection_date">Collection Date</label>
+        <input type="date" id="collection_date" name="collection_date" value="{{ form.collection_date or '' }}">
+      </div>
+      <div class="field">
+        <label for="collection_time">Collection Time</label>
+        <input type="time" id="collection_time" name="collection_time" value="{{ form.collection_time or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="fsr-section">Collection Details</h2>
+  <div class="info-block">
+    <div class="field">
+      <label for="collected_by">Collected By</label>
+      <input type="text" id="collected_by" name="collected_by" value="{{ form.collected_by or '' }}">
+    </div>
+    <div class="field">
+      <label for="location_description">Location Description</label>
+      <textarea id="location_description" name="location_description" rows="3">{{ form.location_description or '' }}</textarea>
+    </div>
+  </div>
+
+  <h2 class="fsr-section">Matrix-Specific Details</h2>
+  <div class="info-block">
+    <div class="field">
+      <label for="matrix_specific_notes">Matrix-Specific Notes</label>
+      <textarea id="matrix_specific_notes" name="matrix_specific_notes" rows="3">{{ form.matrix_specific_notes or '' }}</textarea>
+      <div class="hint">Use for matrix-specific details like soil depth, wipe surface type, paint chip component, etc.</div>
+    </div>
+  </div>
+
+  <h2 class="fsr-section">Analytical Request</h2>
+  <div class="info-block">
+    <div class="field">
+      <label for="analytical_methods_requested">Methods Requested</label>
+      <textarea id="analytical_methods_requested" name="analytical_methods_requested" rows="3">{{ form.analytical_methods_requested or '' }}</textarea>
+      <div class="hint">TTLC, STLC, TCLP, Lead by N9100, etc.</div>
+    </div>
+  </div>
+
+  <h2 class="fsr-section">Lab Handoff</h2>
+  <div class="info-block">
+    <div class="fsr-grid">
+      <div class="field">
+        <label for="laboratory_sent_to">Laboratory Sent To</label>
+        <input type="text" id="laboratory_sent_to" name="laboratory_sent_to" value="{{ form.laboratory_sent_to or '' }}">
+      </div>
+      <div class="field">
+        <label for="date_sent_to_lab">Date Sent to Lab</label>
+        <input type="date" id="date_sent_to_lab" name="date_sent_to_lab" value="{{ form.date_sent_to_lab or '' }}">
+      </div>
+    </div>
+  </div>
+
+  <h2 class="fsr-section">Notes</h2>
+  <div class="info-block">
+    <div class="field">
+      <label for="general_notes">General Notes</label>
+      <textarea id="general_notes" name="general_notes" rows="3">{{ form.general_notes or '' }}</textarea>
+    </div>
+  </div>
+
+  <div class="actions" style="margin-top: 1.5rem;">
+    <button type="submit" class="btn">{{ submit_label or 'Save' }}</button>
+    {% if cancel_url %}
+      <a class="btn secondary" href="{{ cancel_url }}">Cancel</a>
+    {% endif %}
+  </div>
+</form>

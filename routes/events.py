@@ -3,7 +3,7 @@ from datetime import datetime
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from models import AirMonitorReport, Project, Result, Sample, SamplingEvent, db
+from models import AirMonitorReport, FieldSampleRecord, Project, Result, Sample, SamplingEvent, db
 from utils.sample_id import (
     MATRIX_CODE_OPTIONS,
     MATRIX_CODE_TO_MATRIX,
@@ -18,6 +18,12 @@ events_bp = Blueprint("events", __name__, url_prefix="/events")
 PHASE_OPTIONS = ("Before", "During", "After")
 AM_PM_OPTIONS = ("AM", "PM")
 TEMP_UNIT_OPTIONS = ("F", "C")
+
+
+def needs_amr(matrix_code):
+    if not matrix_code:
+        return False
+    return matrix_code.upper() in ("PM", "AM")
 
 
 @events_bp.route("", methods=["GET"])
@@ -166,20 +172,31 @@ def detail(id):
 
     sample_ids = [s.client_sample_id for s in samples if s.client_sample_id]
     amr_by_sample_id = {}
+    fsr_by_sample_id = {}
     if sample_ids:
         amrs = AirMonitorReport.query.filter(
             AirMonitorReport.client_sample_id.in_(sample_ids)
         ).all()
         amr_by_sample_id = {a.client_sample_id: a for a in amrs}
 
+        fsrs = FieldSampleRecord.query.filter(
+            FieldSampleRecord.client_sample_id.in_(sample_ids)
+        ).all()
+        fsr_by_sample_id = {f.client_sample_id: f for f in fsrs}
+
     amr_forms = {}
+    fsr_forms = {}
     for s in samples:
         amr = amr_by_sample_id.get(s.client_sample_id)
         if amr is not None:
             amr_forms[s.id] = _form_from_amr(amr)
+        fsr = fsr_by_sample_id.get(s.client_sample_id)
+        if fsr is not None:
+            fsr_forms[s.id] = _form_from_fsr(fsr)
 
     blanks_count = sum(1 for s in samples if s.is_blank)
     amr_count = len(amr_by_sample_id)
+    fsr_count = len(fsr_by_sample_id)
 
     sample_pk_ids = [s.id for s in samples]
     result_count = 0
@@ -191,15 +208,21 @@ def detail(id):
             or 0
         )
 
+    form_type = "amr" if needs_amr(event.matrix_code) else "fsr"
+
     return render_template(
         "events/detail.html",
         event=event,
         samples=samples,
         amr_by_sample_id=amr_by_sample_id,
         amr_forms=amr_forms,
+        fsr_by_sample_id=fsr_by_sample_id,
+        fsr_forms=fsr_forms,
         blanks_count=blanks_count,
         amr_count=amr_count,
+        fsr_count=fsr_count,
         result_count=result_count,
+        form_type=form_type,
         phase_options=PHASE_OPTIONS,
         am_pm_options=AM_PM_OPTIONS,
         temp_unit_options=TEMP_UNIT_OPTIONS,
@@ -220,6 +243,7 @@ def toggle_blank(event_id, sample_id):
     sample.is_blank = is_blank
 
     had_amr_deleted = False
+    had_fsr_deleted = False
     if is_blank:
         existing_amr = AirMonitorReport.query.filter_by(
             client_sample_id=sample.client_sample_id
@@ -228,11 +252,20 @@ def toggle_blank(event_id, sample_id):
             db.session.delete(existing_amr)
             had_amr_deleted = True
 
+        existing_fsr = FieldSampleRecord.query.filter_by(
+            client_sample_id=sample.client_sample_id
+        ).first()
+        if existing_fsr is not None:
+            db.session.delete(existing_fsr)
+            had_fsr_deleted = True
+
     db.session.commit()
     return jsonify({
         "status": "ok",
         "is_blank": sample.is_blank,
         "had_amr_deleted": had_amr_deleted,
+        "had_fsr_deleted": had_fsr_deleted,
+        "had_record_deleted": had_amr_deleted or had_fsr_deleted,
     })
 
 
@@ -243,6 +276,7 @@ def delete_event(event_id):
 
     samples_deleted = 0
     amrs_deleted = 0
+    fsrs_deleted = 0
     results_deleted = 0
 
     for sample in list(event.samples):
@@ -252,6 +286,13 @@ def delete_event(event_id):
         for amr in amrs:
             db.session.delete(amr)
             amrs_deleted += 1
+
+        fsrs = FieldSampleRecord.query.filter_by(
+            client_sample_id=sample.client_sample_id
+        ).all()
+        for fsr in fsrs:
+            db.session.delete(fsr)
+            fsrs_deleted += 1
 
         results = Result.query.filter_by(sample_id=sample.id).all()
         for result in results:
@@ -265,7 +306,7 @@ def delete_event(event_id):
     db.session.commit()
     flash(
         f"Deleted event: {samples_deleted} samples, {amrs_deleted} field reports, "
-        f"{results_deleted} analytical results removed.",
+        f"{results_deleted} analytical results, {fsrs_deleted} field sample records removed.",
         "success",
     )
     return redirect(url_for("events.list_events"))
@@ -311,6 +352,60 @@ def create_amr(event_id, sample_id):
         temp_unit_options=TEMP_UNIT_OPTIONS,
     )
     return jsonify({"status": "ok", "amr_id": amr.id, "html": html})
+
+
+@events_bp.route("/<int:event_id>/sample/<int:sample_id>/create-fsr", methods=["POST"])
+@login_required
+def create_fsr(event_id, sample_id):
+    sample = Sample.query.get_or_404(sample_id)
+    if sample.sampling_event_id != event_id:
+        return jsonify({"status": "error", "message": "Sample not in event."}), 400
+
+    event = SamplingEvent.query.get_or_404(event_id)
+
+    existing = FieldSampleRecord.query.filter_by(
+        client_sample_id=sample.client_sample_id
+    ).first()
+    if existing is not None:
+        fsr = existing
+    else:
+        fsr = FieldSampleRecord(
+            client_sample_id=sample.client_sample_id,
+            project_id=sample.project_id,
+            job_number=sample.project.project_number if sample.project else None,
+            collection_date=event.event_date,
+            created_by_user_id=current_user.id,
+        )
+        db.session.add(fsr)
+        db.session.commit()
+
+    form = _form_from_fsr(fsr)
+    html = render_template(
+        "events/_inline_fsr_form.html",
+        form=form,
+        fsr=fsr,
+        sample=sample,
+        event=event,
+        available_projects=Project.query.order_by(Project.project_number).all(),
+    )
+    return jsonify({"status": "ok", "fsr_id": fsr.id, "html": html})
+
+
+def _form_from_fsr(fsr):
+    return {
+        "client_sample_id": fsr.client_sample_id or "",
+        "project_id": fsr.project_id or "",
+        "job_number": fsr.job_number or "",
+        "collection_date": fsr.collection_date or "",
+        "collection_time": fsr.collection_time or "",
+        "collected_by": fsr.collected_by or "",
+        "location_description": fsr.location_description or "",
+        "matrix_specific_notes": fsr.matrix_specific_notes or "",
+        "analytical_methods_requested": fsr.analytical_methods_requested or "",
+        "laboratory_sent_to": fsr.laboratory_sent_to or "",
+        "date_sent_to_lab": fsr.date_sent_to_lab or "",
+        "general_notes": fsr.general_notes or "",
+    }
 
 
 def _form_from_amr(amr):

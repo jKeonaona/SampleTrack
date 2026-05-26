@@ -4,7 +4,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required
 from sqlalchemy import or_
 
-from models import AirMonitorReport, db, Project, Sample
+from models import AirMonitorReport, FieldSampleRecord, db, Project, Sample
 from parsers.lab_report import MATRIX_OPTIONS
 from routes._helpers import csv_response
 from routes.projects import _parse_date
@@ -140,6 +140,7 @@ def detail(sample_id):
     results = sorted(sample.results, key=lambda r: (r.analyte or "").lower())
     result_evaluations = {r.id: evaluate_result(sample, r) for r in results}
     amr = AirMonitorReport.query.filter_by(client_sample_id=sample.client_sample_id).first()
+    fsr = FieldSampleRecord.query.filter_by(client_sample_id=sample.client_sample_id).first()
     return render_template(
         "samples/detail.html",
         sample=sample,
@@ -147,6 +148,7 @@ def detail(sample_id):
         results=results,
         result_evaluations=result_evaluations,
         amr=amr,
+        fsr=fsr,
     )
 
 
