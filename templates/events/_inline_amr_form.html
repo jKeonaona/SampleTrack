@@ -1,0 +1,250 @@
+<div class="amr-inline-form" data-amr-id="{{ amr.id }}" data-sample-id="{{ sample.id }}">
+  <form method="post" action="{{ url_for('amr.edit_save', id=amr.id) }}" class="amr-form stacked">
+
+    <div class="amr-form-header">
+      <strong>Field Report for {{ sample.client_sample_id }}</strong>
+      <span class="amr-save-indicator" data-role="indicator"></span>
+      <a class="amr-form-fulllink" href="{{ url_for('amr.detail', id=amr.id) }}">Full page →</a>
+    </div>
+
+    <h3>Sample Identification</h3>
+    <div class="info-block">
+      <div class="amr-grid">
+        <div class="field">
+          <label>Client Sample ID</label>
+          <input type="text" name="client_sample_id" required value="{{ form.client_sample_id or '' }}">
+        </div>
+        <div class="field">
+          <label>Job Number</label>
+          <input type="text" name="job_number" value="{{ form.job_number or '' }}">
+        </div>
+        <div class="field">
+          <label>Project</label>
+          <select name="project_id">
+            <option value="">—</option>
+            {% for p in available_projects %}
+              <option value="{{ p.id }}" {% if form.project_id and form.project_id|string == p.id|string %}selected{% endif %}>{{ p.project_number }} — {{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label>Monitoring Date</label>
+          <input type="date" name="monitoring_date" value="{{ form.monitoring_date or '' }}">
+        </div>
+      </div>
+    </div>
+
+    <h3>Equipment</h3>
+    <div class="info-block">
+      <div class="amr-grid">
+        <div class="field">
+          <label>Pump Serial</label>
+          <input type="text" name="pump_serial" value="{{ form.pump_serial or '' }}">
+        </div>
+        <div class="field">
+          <label>Cassette Number</label>
+          <input type="text" name="cassette_number" placeholder="X-Y-Z" value="{{ form.cassette_number or '' }}">
+        </div>
+      </div>
+      <div class="field" style="margin-top: 1rem;">
+        <label>Monitoring Phase</label>
+        <div class="radio-row">
+          {% for phase in phase_options %}
+            <label><input type="radio" name="monitoring_phase" value="{{ phase }}" {% if form.monitoring_phase == phase %}checked{% endif %}> {{ phase }}</label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <h3>Sampling Time</h3>
+    <div class="info-block">
+      <div class="amr-grid">
+        <div class="field">
+          <label>Time Started</label>
+          <div class="inline-row">
+            <input type="time" name="time_started" value="{{ form.time_started or '' }}">
+            <div class="radio-row compact">
+              {% for ap in am_pm_options %}
+                <label><input type="radio" name="am_pm_started" value="{{ ap }}" {% if form.am_pm_started == ap %}checked{% endif %}> {{ ap }}</label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Time Stopped</label>
+          <div class="inline-row">
+            <input type="time" name="time_stopped" value="{{ form.time_stopped or '' }}">
+            <div class="radio-row compact">
+              {% for ap in am_pm_options %}
+                <label><input type="radio" name="am_pm_stopped" value="{{ ap }}" {% if form.am_pm_stopped == ap %}checked{% endif %}> {{ ap }}</label>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="amr-grid three" style="margin-top: 1rem;">
+        <div class="field">
+          <label>Total Hours</label>
+          <input type="number" min="0" name="total_hours" value="{{ form.total_hours if form.total_hours not in (None, '') else '' }}">
+        </div>
+        <div class="field">
+          <label>Total Minutes</label>
+          <input type="number" min="0" name="total_minutes" value="{{ form.total_minutes if form.total_minutes not in (None, '') else '' }}">
+        </div>
+        <div class="field">
+          <label>Liters per Minute</label>
+          <input type="text" name="liters_per_minute" placeholder="e.g. 2 L/min" value="{{ form.liters_per_minute or '' }}">
+        </div>
+      </div>
+    </div>
+
+    <h3>Calibration</h3>
+    <div class="info-block">
+      <div class="check-row">
+        <input type="checkbox" name="calibrated_before" {% if form.calibrated_before %}checked{% endif %}>
+        <label>Calibrated before sampling</label>
+      </div>
+      <div class="amr-grid">
+        <div class="field">
+          <label>Calibration Rate (before)</label>
+          <input type="text" name="calibrated_before_rate" value="{{ form.calibrated_before_rate or '' }}">
+        </div>
+        <div class="field">
+          <label>Calibrated by (before)</label>
+          <input type="text" name="calibrated_before_by" value="{{ form.calibrated_before_by or '' }}">
+        </div>
+      </div>
+      <div class="check-row" style="margin-top: 1rem;">
+        <input type="checkbox" name="calibrated_after" {% if form.calibrated_after %}checked{% endif %}>
+        <label>Calibrated after sampling</label>
+      </div>
+      <div class="amr-grid">
+        <div class="field">
+          <label>Calibration Rate (after)</label>
+          <input type="text" name="calibrated_after_rate" value="{{ form.calibrated_after_rate or '' }}">
+        </div>
+        <div class="field">
+          <label>Calibrated by (after)</label>
+          <input type="text" name="calibrated_after_by" value="{{ form.calibrated_after_by or '' }}">
+        </div>
+      </div>
+      <div class="amr-grid" style="margin-top: 1rem;">
+        <div class="field">
+          <label>Last Calibration Date</label>
+          <input type="date" name="last_calibration_date" value="{{ form.last_calibration_date or '' }}">
+        </div>
+        <div class="field">
+          <label>Measured Rate</label>
+          <input type="text" name="measured_rate" value="{{ form.measured_rate or '' }}">
+        </div>
+      </div>
+      <div class="check-row" style="margin-top: 1rem;">
+        <input type="checkbox" name="used_since_calibration" {% if form.used_since_calibration %}checked{% endif %}>
+        <label>Pump used since last calibration</label>
+      </div>
+    </div>
+
+    <h3>Sample Type</h3>
+    <div class="info-block">
+      <div class="radio-row">
+        <label><input type="radio" name="sample_type" value="personal" class="sample-type-personal" {% if form.is_personal_sample %}checked{% endif %}> Personal</label>
+        <label><input type="radio" name="sample_type" value="area" class="sample-type-area" {% if form.is_area_sample %}checked{% endif %}> Area</label>
+      </div>
+    </div>
+
+    <div class="personal-section">
+      <h3>Personal Sample</h3>
+      <div class="info-block">
+        <div class="field">
+          <label>Worker Monitored</label>
+          <input type="text" name="worker_monitored" value="{{ form.worker_monitored or '' }}">
+        </div>
+        <div class="field">
+          <label>Job Duties</label>
+          <textarea name="job_duties" rows="2">{{ form.job_duties or '' }}</textarea>
+        </div>
+        <div class="field">
+          <label>PPE Worn</label>
+          <textarea name="ppe_worn" rows="2">{{ form.ppe_worn or '' }}</textarea>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" name="cassette_worn_properly" {% if form.cassette_worn_properly %}checked{% endif %}>
+          <label>Cassette worn properly (in breathing zone)</label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" name="dragged_through_abrasive" {% if form.dragged_through_abrasive %}checked{% endif %}>
+          <label>Cassette dragged through abrasive material</label>
+        </div>
+        <div class="check-row">
+          <input type="checkbox" name="unusual_happened" {% if form.unusual_happened %}checked{% endif %}>
+          <label>Anything unusual happen during sampling?</label>
+        </div>
+        <div class="field">
+          <label>Unusual Details</label>
+          <textarea name="unusual_details" rows="2">{{ form.unusual_details or '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="area-section">
+      <h3>Area Sample</h3>
+      <div class="info-block">
+        <div class="field">
+          <label>Monitor Location</label>
+          <input type="text" name="monitor_location" value="{{ form.monitor_location or '' }}">
+        </div>
+        <div class="field">
+          <label>Blasting Location</label>
+          <input type="text" name="blasting_location" value="{{ form.blasting_location or '' }}">
+        </div>
+        <div class="field">
+          <label>Unusual Events</label>
+          <textarea name="area_unusual_events" rows="2">{{ form.area_unusual_events or '' }}</textarea>
+        </div>
+        <div class="field">
+          <label>Weather Conditions</label>
+          <input type="text" name="weather_conditions" value="{{ form.weather_conditions or '' }}">
+        </div>
+        <div class="amr-grid">
+          <div class="field">
+            <label>Temperature</label>
+            <div class="inline-row">
+              <input type="text" name="temperature_value" value="{{ form.temperature_value or '' }}">
+              <div class="radio-row compact">
+                {% for u in temp_unit_options %}
+                  <label><input type="radio" name="temperature_unit" value="{{ u }}" {% if form.temperature_unit == u %}checked{% endif %}> °{{ u }}</label>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Wind Speed / Direction</label>
+            <input type="text" name="wind_speed_direction" value="{{ form.wind_speed_direction or '' }}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>Personnel and Lab</h3>
+    <div class="info-block">
+      <div class="amr-grid">
+        <div class="field">
+          <label>Placed By</label>
+          <input type="text" name="placed_by" value="{{ form.placed_by or '' }}">
+        </div>
+        <div class="field">
+          <label>Removed By</label>
+          <input type="text" name="removed_by" value="{{ form.removed_by or '' }}">
+        </div>
+        <div class="field">
+          <label>Laboratory Sent To</label>
+          <input type="text" name="laboratory_sent_to" value="{{ form.laboratory_sent_to or '' }}">
+        </div>
+        <div class="field">
+          <label>Date Sent to Lab</label>
+          <input type="date" name="date_sent_to_lab" value="{{ form.date_sent_to_lab or '' }}">
+        </div>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Sampling Event: {{ event.event_date or event.id }}{% endblock %}
+
+{% block content %}
+  <style>
+    .amr-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .amr-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+    .amr-grid .field { margin-bottom: 0; }
+    .radio-row { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+    .radio-row label { font-weight: normal; color: var(--fg); margin-bottom: 0; }
+    .check-row { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.5rem; }
+    .check-row label { margin-bottom: 0; color: var(--fg); }
+    .inline-row { display: flex; gap: 0.75rem; align-items: flex-end; }
+    .inline-row .field { flex: 1; margin-bottom: 0; }
+    .inline-row .compact { flex: 0 0 auto; }
+
+    .samples-table td.actions { white-space: nowrap; }
+    .amr-form-row { background: #fafbfc; }
+    .amr-form-row > td { padding: 1rem 1.5rem; }
+    .amr-form-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .amr-form-fulllink { margin-left: auto; font-size: 0.85rem; }
+    .amr-save-indicator {
+      font-size: 0.85rem;
+      color: var(--muted);
+      transition: opacity 0.3s ease;
+    }
+    .amr-save-indicator.saving { color: var(--muted); }
+    .amr-save-indicator.saved { color: var(--success); }
+    .amr-save-indicator.error { color: var(--danger); }
+    .amr-inline-form h3 {
+      margin: 1rem 0 0.5rem;
+      font-size: 1rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .amr-inline-form input[type="text"],
+    .amr-inline-form input[type="date"],
+    .amr-inline-form input[type="time"],
+    .amr-inline-form input[type="number"],
+    .amr-inline-form select,
+    .amr-inline-form textarea {
+      width: 100%;
+      padding: 0.4rem 0.6rem;
+      font: inherit;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: var(--surface);
+    }
+    .amr-inline-form label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .amr-inline-form .field { margin-bottom: 0.75rem; }
+  </style>
+
+  <div class="toolbar">
+    <h1>Sampling Event</h1>
+    <a class="btn secondary" href="{{ url_for('events.list_events') }}">Back to events</a>
+  </div>
+
+  <div class="info-block" style="margin-bottom: 1rem;">
+    <dl>
+      <dt>Project</dt><dd>
+        {% if event.project %}
+          <a href="{{ url_for('projects.detail', project_id=event.project.id) }}">{{ event.project.project_number }} — {{ event.project.name }}</a>
+        {% else %}—{% endif %}
+      </dd>
+      <dt>Matrix Code</dt><dd>{{ event.matrix_code }}</dd>
+      <dt>Event Date</dt><dd>{{ event.event_date or "—" }}</dd>
+      <dt>Total Samples</dt><dd>{{ samples|length }}</dd>
+      <dt>Blanks</dt><dd>{{ blanks_count }}</dd>
+      <dt>AMRs Completed</dt><dd>{{ amr_count }} / {{ samples|length - blanks_count }}</dd>
+      {% if event.notes %}
+        <dt>Notes</dt><dd>{{ event.notes }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+
+  <h2>Samples</h2>
+  <table class="data samples-table">
+    <thead>
+      <tr>
+        <th>Sample ID</th>
+        <th>Blank?</th>
+        <th>AMR Status</th>
+        <th>Lab Status</th>
+        <th class="actions"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in samples %}
+        {% set amr = amr_by_sample_id.get(s.client_sample_id) %}
+        <tr id="sample-row-{{ s.id }}" data-sample-id="{{ s.id }}">
+          <td><strong>{{ s.client_sample_id }}</strong></td>
+          <td>
+            <input type="checkbox"
+                   class="blank-checkbox"
+                   data-sample-id="{{ s.id }}"
+                   {% if s.is_blank %}checked{% endif %}
+                   onchange="toggleBlank({{ s.id }}, {{ event.id }}, this.checked)">
+          </td>
+          <td class="amr-status-cell">
+            {% if s.is_blank %}
+              <span class="status-pill">Blank (no AMR)</span>
+            {% elif amr %}
+              <span class="flag-pill ok">Started</span>
+            {% else %}
+              <span class="flag-pill no_value">Not started</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if s.results %}
+              <span class="flag-pill ok">{{ s.results|length }} result(s)</span>
+            {% else %}
+              <span class="flag-pill no_value">Awaiting lab</span>
+            {% endif %}
+          </td>
+          <td class="actions">
+            <button type="button" class="btn secondary amr-toggle-btn"
+                    data-sample-id="{{ s.id }}"
+                    onclick="expandAmr({{ s.id }}, {{ event.id }})"
+                    {% if s.is_blank %}disabled{% endif %}>
+              {% if amr %}Edit Field Report{% else %}Fill out Field Report{% endif %}
+            </button>
+          </td>
+        </tr>
+        <tr class="amr-form-row" id="amr-form-row-{{ s.id }}" style="display: none;">
+          <td colspan="5">
+            <div class="amr-form-placeholder" id="amr-form-placeholder-{{ s.id }}">
+              {% if amr %}
+                {% set form = amr_forms.get(s.id) %}
+                {% set sample = s %}
+                {% include 'events/_inline_amr_form.html' %}
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    function csrfHeaders() {
+      return { "X-Requested-With": "XMLHttpRequest" };
+    }
+
+    async function toggleBlank(sampleId, eventId, isBlank) {
+      try {
+        const res = await fetch(`/events/${eventId}/sample/${sampleId}/toggle-blank`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...csrfHeaders() },
+          body: JSON.stringify({ is_blank: isBlank }),
+        });
+        if (!res.ok) throw new Error("toggle-blank failed");
+        const data = await res.json();
+
+        const row = document.getElementById(`sample-row-${sampleId}`);
+        const statusCell = row.querySelector(".amr-status-cell");
+        const btn = row.querySelector(".amr-toggle-btn");
+        const formRow = document.getElementById(`amr-form-row-${sampleId}`);
+        const placeholder = document.getElementById(`amr-form-placeholder-${sampleId}`);
+
+        if (data.is_blank) {
+          statusCell.innerHTML = '<span class="status-pill">Blank (no AMR)</span>';
+          btn.disabled = true;
+          formRow.style.display = "none";
+          if (data.had_amr_deleted) placeholder.innerHTML = "";
+        } else {
+          btn.disabled = false;
+          if (placeholder.querySelector(".amr-inline-form")) {
+            statusCell.innerHTML = '<span class="flag-pill ok">Started</span>';
+            btn.textContent = "Edit Field Report";
+          } else {
+            statusCell.innerHTML = '<span class="flag-pill no_value">Not started</span>';
+            btn.textContent = "Fill out Field Report";
+          }
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Could not update blank status.");
+      }
+    }
+
+    async function expandAmr(sampleId, eventId) {
+      const formRow = document.getElementById(`amr-form-row-${sampleId}`);
+      const placeholder = document.getElementById(`amr-form-placeholder-${sampleId}`);
+      const existingForm = placeholder.querySelector(".amr-inline-form");
+
+      if (existingForm) {
+        formRow.style.display = formRow.style.display === "none" ? "" : "none";
+        return;
+      }
+
+      try {
+        const res = await fetch(`/events/${eventId}/sample/${sampleId}/create-amr`, {
+          method: "POST",
+          headers: csrfHeaders(),
+        });
+        if (!res.ok) throw new Error("create-amr failed");
+        const data = await res.json();
+        placeholder.innerHTML = data.html;
+        wireForm(placeholder.querySelector(".amr-inline-form"));
+        formRow.style.display = "";
+
+        const row = document.getElementById(`sample-row-${sampleId}`);
+        const btn = row.querySelector(".amr-toggle-btn");
+        const statusCell = row.querySelector(".amr-status-cell");
+        btn.textContent = "Edit Field Report";
+        statusCell.innerHTML = '<span class="flag-pill ok">Started</span>';
+      } catch (err) {
+        console.error(err);
+        alert("Could not load form.");
+      }
+    }
+
+    function wireForm(container) {
+      if (!container) return;
+      const form = container.querySelector("form.amr-form");
+      const indicator = container.querySelector('[data-role="indicator"]');
+      wireSectionToggle(container);
+      wireAutoSave(form, indicator);
+    }
+
+    function wireSectionToggle(container) {
+      const personalRadio = container.querySelector(".sample-type-personal");
+      const areaRadio = container.querySelector(".sample-type-area");
+      const personalSection = container.querySelector(".personal-section");
+      const areaSection = container.querySelector(".area-section");
+
+      function apply() {
+        const showPersonal = personalRadio && personalRadio.checked;
+        const showArea = areaRadio && areaRadio.checked;
+        const anyChecked = showPersonal || showArea;
+        if (personalSection) personalSection.style.display = (!anyChecked || showPersonal) ? "" : "none";
+        if (areaSection) areaSection.style.display = (!anyChecked || showArea) ? "" : "none";
+      }
+      if (personalRadio) personalRadio.addEventListener("change", apply);
+      if (areaRadio) areaRadio.addEventListener("change", apply);
+      apply();
+    }
+
+    function wireAutoSave(form, indicator) {
+      if (!form) return;
+      const fields = form.querySelectorAll("input, select, textarea");
+      fields.forEach((field) => {
+        const evt = (field.type === "checkbox" || field.type === "radio") ? "change" : "blur";
+        field.addEventListener(evt, () => saveForm(form, indicator));
+      });
+    }
+
+    async function saveForm(form, indicator) {
+      if (indicator) {
+        indicator.textContent = "Saving...";
+        indicator.className = "amr-save-indicator saving";
+      }
+      try {
+        const res = await fetch(form.action, {
+          method: "POST",
+          headers: csrfHeaders(),
+          body: new FormData(form),
+        });
+        if (!res.ok) throw new Error("save failed");
+        if (indicator) {
+          indicator.textContent = "Saved";
+          indicator.className = "amr-save-indicator saved";
+          setTimeout(() => { indicator.textContent = ""; }, 2000);
+        }
+      } catch (err) {
+        console.error(err);
+        if (indicator) {
+          indicator.textContent = "Save failed";
+          indicator.className = "amr-save-indicator error";
+        }
+      }
+    }
+
+    document.querySelectorAll(".amr-inline-form").forEach(wireForm);
+  </script>
+{% endblock %}

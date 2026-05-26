@@ -1,4 +1,6 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from datetime import datetime
+
+from flask import Blueprint, abort, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from models import AirMonitorReport, Project, Sample, db
@@ -308,14 +310,27 @@ def edit(id):
 @amr_bp.route("/<int:id>/edit", methods=["POST"])
 @login_required
 def edit_save(id):
+    is_ajax = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or request.is_json
+    )
     amr = AirMonitorReport.query.get_or_404(id)
     form = _form_from_request()
     if not form["client_sample_id"]:
+        if is_ajax:
+            return jsonify({"status": "error", "message": "Client Sample ID is required."}), 400
         flash("Client Sample ID is required.", "error")
         return _render_form("amr/edit.html", form, amr=amr), 400
 
     _apply_form_to_amr(amr, form)
     db.session.commit()
+
+    if is_ajax:
+        return jsonify({
+            "status": "ok",
+            "saved_at": datetime.utcnow().isoformat(),
+        })
+
     flash("Air Monitor Report updated.", "success")
     return redirect(url_for("amr.detail", id=amr.id))
 

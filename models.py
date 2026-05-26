@@ -58,6 +58,10 @@ class Project(db.Model):
 class Sample(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False, index=True)
+    sampling_event_id = db.Column(db.Integer, db.ForeignKey("sampling_event.id"), nullable=True, index=True)
+    is_blank = db.Column(db.Boolean, default=False, nullable=False)
+    sequence_number = db.Column(db.Integer, nullable=True)
+    matrix_code = db.Column(db.String(10), nullable=True, index=True)
     client_sample_id = db.Column(db.String(100), nullable=False, index=True)
     lab_sample_id = db.Column(db.String(100), nullable=True, index=True)
     lab_workorder = db.Column(db.String(100), nullable=True, index=True)
@@ -100,6 +104,24 @@ class Threshold(db.Model):
     __table_args__ = (
         db.Index("ix_threshold_analyte_matrix", "analyte", "matrix"),
     )
+
+
+class SamplingEvent(db.Model):
+    __tablename__ = "sampling_event"
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("project.id"), nullable=False, index=True)
+    matrix_code = db.Column(db.String(10), nullable=False)
+    event_date = db.Column(db.String(20), nullable=True)
+    expected_sample_count = db.Column(db.Integer, nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project = db.relationship("Project", backref="sampling_events")
+    samples = db.relationship("Sample", backref="sampling_event", lazy=True)
+    created_by = db.relationship("User", foreign_keys=[created_by_user_id])
 
 
 class AirMonitorReport(db.Model):

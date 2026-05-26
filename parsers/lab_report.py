@@ -107,15 +107,21 @@ USER_PROMPT = (
 )
 
 
-def _detect_prefix_matrix(client_sample_id: Optional[str]) -> Optional[str]:
+def _detect_prefix_code(client_sample_id: Optional[str]) -> Optional[str]:
     """Find the first 2-letter matrix prefix code in the sample ID."""
     if not client_sample_id:
         return None
     for match in PREFIX_RE.finditer(client_sample_id.upper()):
         code = match.group(1)
         if code in PREFIX_MAP:
-            return PREFIX_MAP[code]
+            return code
     return None
+
+
+def _detect_prefix_matrix(client_sample_id: Optional[str]) -> Optional[str]:
+    """Return the matrix name for the detected prefix code, or None."""
+    code = _detect_prefix_code(client_sample_id)
+    return PREFIX_MAP.get(code) if code else None
 
 
 def map_matrix(matrix_raw: Optional[str], client_sample_id: Optional[str]) -> str:
@@ -269,6 +275,7 @@ def _normalize_samples(samples_in):
             "lab_sample_id": sample.get("lab_sample_id") or "",
             "matrix_raw": matrix_raw,
             "matrix": map_matrix(matrix_raw, client_sample_id),
+            "matrix_code": _detect_prefix_code(client_sample_id),
             "collection_date": sample.get("collection_date"),
             "collection_start_time": sample.get("collection_start_time"),
             "collection_end_time": sample.get("collection_end_time"),

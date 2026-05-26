@@ -11,6 +11,7 @@ from routes.auth import auth_bp
 from routes.admin import admin_bp
 from routes.samples import samples_bp
 from routes.amr import amr_bp
+from routes.events import events_bp
 
 load_dotenv()
 
@@ -37,6 +38,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(samples_bp)
 app.register_blueprint(amr_bp)
+app.register_blueprint(events_bp)
 
 
 @app.route("/")

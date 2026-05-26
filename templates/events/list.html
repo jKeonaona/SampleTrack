@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Sampling Events{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>Sampling Events</h1>
+    <a class="btn" href="{{ url_for('events.new') }}">+ New Sampling Event</a>
+  </div>
+
+  <p class="subtitle">
+    Showing {{ events|length }} event{% if events|length != 1 %}s{% endif %}.
+  </p>
+
+  {% if events %}
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Event Date</th>
+          <th>Project</th>
+          <th>Matrix</th>
+          <th>Expected</th>
+          <th>Generated</th>
+          <th>Blanks</th>
+          <th>AMRs</th>
+          <th>Created By</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in events %}
+          <tr>
+            <td>{{ e.event_date or "—" }}</td>
+            <td>
+              {% if e.project %}
+                <a href="{{ url_for('projects.detail', project_id=e.project.id) }}">{{ e.project.project_number }} — {{ e.project.name }}</a>
+              {% else %}—{% endif %}
+            </td>
+            <td>{{ e.matrix_code }}</td>
+            <td>{{ e.expected_sample_count if e.expected_sample_count is not none else "—" }}</td>
+            <td>{{ sample_counts.get(e.id, 0) }}</td>
+            <td>{{ blank_counts.get(e.id, 0) }}</td>
+            <td>{{ amr_counts.get(e.id, 0) }}</td>
+            <td>{{ e.created_by.name if e.created_by and e.created_by.name else (e.created_by.email if e.created_by else "—") }}</td>
+            <td><a href="{{ url_for('events.detail', id=e.id) }}">Open →</a></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">
+      <p>No sampling events yet.</p>
+      <a class="btn" href="{{ url_for('events.new') }}">+ New Sampling Event</a>
+    </div>
+  {% endif %}
+
+  <p style="margin-top: 1.5rem; color: var(--muted); font-size: 0.9rem;">
+    <a href="{{ url_for('amr.list_amr') }}">View all Field Reports (legacy)</a>
+  </p>
+{% endblock %}

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}New Sampling Event{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <h1>New Sampling Event</h1>
+    <a class="btn secondary" href="{{ url_for('events.list_events') }}">Cancel</a>
+  </div>
+
+  <form class="stacked" method="post" action="{{ url_for('events.create') }}">
+    <div class="info-block">
+      <div class="field">
+        <label for="project_id">Project *</label>
+        <select id="project_id" name="project_id" required>
+          <option value="">— Select project —</option>
+          {% for p in available_projects %}
+            <option value="{{ p.id }}" {% if form.project_id|string == p.id|string %}selected{% endif %}>{{ p.project_number }} — {{ p.name }}</option>
+          {% endfor %}
+        </select>
+        <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+          <a href="{{ url_for('projects.new') }}">+ Create new project</a>
+        </div>
+      </div>
+      <div class="field">
+        <label for="matrix_code">Matrix *</label>
+        <select id="matrix_code" name="matrix_code" required>
+          <option value="">— Select matrix —</option>
+          {% for code in matrix_code_options %}
+            <option value="{{ code }}" {% if form.matrix_code == code %}selected{% endif %}>{{ code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="event_date">Event Date</label>
+        <input type="date" id="event_date" name="event_date" value="{{ form.event_date or '' }}">
+      </div>
+      <div class="field">
+        <label for="expected_sample_count">Expected Sample Count *</label>
+        <input type="number" min="1" id="expected_sample_count" name="expected_sample_count" required value="{{ form.expected_sample_count or '' }}">
+      </div>
+      <div class="field">
+        <label for="notes">Notes</label>
+        <textarea id="notes" name="notes" rows="3">{{ form.notes or '' }}</textarea>
+      </div>
+    </div>
+
+    <div class="actions" style="margin-top: 1.5rem;">
+      <button type="submit" class="btn">Create Event and Generate Sample IDs</button>
+      <a class="btn secondary" href="{{ url_for('events.list_events') }}">Cancel</a>
+    </div>
+  </form>
+{% endblock %}
