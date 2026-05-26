@@ -49,6 +49,7 @@ class Project(db.Model):
     client = db.Column(db.String(200), nullable=True)
     location = db.Column(db.String(200), nullable=True)
     status = db.Column(db.String(20), default="active")
+    jurisdiction = db.Column(db.String(20), nullable=False, default="California")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -99,6 +100,8 @@ class Threshold(db.Model):
     units = db.Column(db.String(20), nullable=False)
     notes = db.Column(db.Text, nullable=True)
     active = db.Column(db.Boolean, default=True)
+    jurisdiction = db.Column(db.String(20), nullable=False, default="Both")
+    threshold_type = db.Column(db.String(20), nullable=False, default="PEL")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (

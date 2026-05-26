@@ -36,6 +36,7 @@ def create():
         "client": (request.form.get("client") or "").strip(),
         "location": (request.form.get("location") or "").strip(),
         "status": (request.form.get("status") or "active").strip(),
+        "jurisdiction": (request.form.get("jurisdiction") or "California").strip(),
     }
 
     if not form["project_number"]:
@@ -43,6 +44,9 @@ def create():
         return render_template("projects/new.html", form=form), 400
     if not form["name"]:
         flash("Name is required.", "error")
+        return render_template("projects/new.html", form=form), 400
+    if form["jurisdiction"] not in VALID_JURISDICTIONS:
+        flash(f"Jurisdiction must be one of: {', '.join(VALID_JURISDICTIONS)}.", "error")
         return render_template("projects/new.html", form=form), 400
 
     existing = Project.query.filter_by(project_number=form["project_number"]).first()
@@ -56,6 +60,7 @@ def create():
         client=form["client"] or None,
         location=form["location"] or None,
         status=form["status"] or "active",
+        jurisdiction=form["jurisdiction"],
     )
     db.session.add(project)
     db.session.commit()
@@ -103,6 +108,7 @@ def export_project(project_id):
 
 
 VALID_PROJECT_STATUSES = ("active", "archived", "complete")
+VALID_JURISDICTIONS = ("California", "Federal")
 
 
 @projects_bp.route("/<int:project_id>/edit", methods=["GET"])
@@ -115,6 +121,7 @@ def edit(project_id):
         "client": project.client or "",
         "location": project.location or "",
         "status": project.status or "active",
+        "jurisdiction": project.jurisdiction or "California",
     }
     return render_template("projects/edit.html", project=project, form=form)
 
@@ -129,6 +136,7 @@ def edit_save(project_id):
         "client": (request.form.get("client") or "").strip(),
         "location": (request.form.get("location") or "").strip(),
         "status": (request.form.get("status") or "active").strip(),
+        "jurisdiction": (request.form.get("jurisdiction") or "California").strip(),
     }
 
     if not form["project_number"]:
@@ -137,6 +145,10 @@ def edit_save(project_id):
 
     if form["status"] not in VALID_PROJECT_STATUSES:
         flash(f"Status must be one of: {', '.join(VALID_PROJECT_STATUSES)}.", "error")
+        return render_template("projects/edit.html", project=project, form=form), 400
+
+    if form["jurisdiction"] not in VALID_JURISDICTIONS:
+        flash(f"Jurisdiction must be one of: {', '.join(VALID_JURISDICTIONS)}.", "error")
         return render_template("projects/edit.html", project=project, form=form), 400
 
     if form["project_number"] != project.project_number:
@@ -150,6 +162,7 @@ def edit_save(project_id):
     project.client = form["client"] or None
     project.location = form["location"] or None
     project.status = form["status"]
+    project.jurisdiction = form["jurisdiction"]
     db.session.commit()
 
     flash("Project updated.", "success")

@@ -213,4 +213,58 @@
       {% endif %}
     {% endfor %}
   {% endif %}
+
+  {% if is_personal_air and respirator_recommendations %}
+    {% set status_pill_class = {
+      "none_required": "ok",
+      "respirator_required": "warning",
+      "extreme_exposure": "exceeded",
+      "unavailable": "no_value",
+    } %}
+    {% set status_label = {
+      "none_required": "None required",
+      "respirator_required": "Respirator required",
+      "extreme_exposure": "Extreme exposure",
+      "unavailable": "Unavailable",
+    } %}
+
+    <h2>CCC Respirator Recommendation ({{ jurisdiction_label }})</h2>
+    <table class="data">
+      <thead>
+        <tr>
+          <th>Analyte</th>
+          <th>TWA</th>
+          <th>Status</th>
+          <th>Required APF</th>
+          <th>Recommended Respirator</th>
+          <th>Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+          {% set rec = respirator_recommendations.get(r.analyte) %}
+          {% if rec %}
+            {% set ev = result_evaluations.get(r.id) %}
+            <tr>
+              <td>{{ r.analyte }}</td>
+              <td>
+                {% if ev and ev.comparison_value is not none %}
+                  {{ ev.comparison_value }} {{ ev.comparison_units or "" }}
+                {% else %}—{% endif %}
+              </td>
+              <td><span class="flag-pill {{ status_pill_class.get(rec.status, 'no_value') }}">{{ status_label.get(rec.status, rec.status) }}</span></td>
+              <td>{{ rec.required_apf if rec.required_apf else "—" }}</td>
+              <td>{{ rec.respirator_type or "—" }}</td>
+              <td>{{ rec.note or "" }}</td>
+            </tr>
+          {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    <p style="color: var(--muted); font-size: 0.85rem; margin-top: 0.75rem;">
+      This recommendation reflects CCC's policy of providing respiratory protection at the
+      Action Level. The OSHA minimum requires respirators at the PEL. Recommendations use
+      the {{ jurisdiction_label }} for the analytes evaluated above.
+    </p>
+  {% endif %}
 {% endblock %}

@@ -34,6 +34,17 @@
         <option value="complete" {% if current_status == 'complete' %}selected{% endif %}>Complete</option>
       </select>
     </div>
+    <div class="field">
+      <label for="jurisdiction">OSHA Jurisdiction</label>
+      <select id="jurisdiction" name="jurisdiction">
+        {% set current_jurisdiction = form.jurisdiction or 'California' %}
+        <option value="California" {% if current_jurisdiction == 'California' %}selected{% endif %}>California</option>
+        <option value="Federal" {% if current_jurisdiction == 'Federal' %}selected{% endif %}>Federal</option>
+      </select>
+      <div style="color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem;">
+        California uses Cal/OSHA Table AC-1 and §1532.1 lead limits. Federal uses 29 CFR 1910.1000 Table Z and 1926.62 for projects on federal property or outside California.
+      </div>
+    </div>
     <div class="actions">
       <button type="submit" class="btn">Save Changes</button>
       <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Cancel</a>

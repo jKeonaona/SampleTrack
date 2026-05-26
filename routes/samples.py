@@ -9,6 +9,7 @@ from parsers.lab_report import MATRIX_OPTIONS
 from routes._helpers import csv_response
 from routes.projects import _parse_date
 from utils.calculations import evaluate_result, worst_sample_status
+from utils.respirator import JURISDICTION_LABEL, recommend_respirator
 
 samples_bp = Blueprint("samples", __name__)
 
@@ -141,6 +142,32 @@ def detail(sample_id):
     result_evaluations = {r.id: evaluate_result(sample, r) for r in results}
     amr = AirMonitorReport.query.filter_by(client_sample_id=sample.client_sample_id).first()
     fsr = FieldSampleRecord.query.filter_by(client_sample_id=sample.client_sample_id).first()
+
+    respirator_recommendations = {}
+    is_personal_air = (
+        sample.matrix == "Personal Air"
+        or (sample.matrix_code and sample.matrix_code.upper() == "PM")
+    )
+    if is_personal_air and sample.project is not None:
+        jurisdiction = sample.project.jurisdiction or "California"
+        for r in results:
+            ev = result_evaluations.get(r.id)
+            if not ev or ev.get("comparison_basis") != "8-hr TWA":
+                continue
+            twa = ev.get("comparison_value")
+            if twa is None:
+                continue
+            respirator_recommendations[r.analyte] = recommend_respirator(
+                twa, r.analyte, jurisdiction
+            )
+
+    jurisdiction_label = None
+    if is_personal_air and sample.project is not None:
+        jurisdiction_label = JURISDICTION_LABEL.get(
+            sample.project.jurisdiction or "California",
+            sample.project.jurisdiction or "California",
+        )
+
     return render_template(
         "samples/detail.html",
         sample=sample,
@@ -149,6 +176,9 @@ def detail(sample_id):
         result_evaluations=result_evaluations,
         amr=amr,
         fsr=fsr,
+        respirator_recommendations=respirator_recommendations,
+        jurisdiction_label=jurisdiction_label,
+        is_personal_air=is_personal_air,
     )
 
 
