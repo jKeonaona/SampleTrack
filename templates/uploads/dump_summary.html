@@ -24,6 +24,12 @@
       <div class="label">Samples Saved</div>
       <div class="value">{{ total_samples_saved }}</div>
     </div>
+    {% if total_samples_merged and total_samples_merged > 0 %}
+      <div class="stat-card" style="background: #dbeafe; border-color: #93c5fd;">
+        <div class="label">Samples Merged</div>
+        <div class="value">{{ total_samples_merged }}</div>
+      </div>
+    {% endif %}
     <div class="stat-card">
       <div class="label">Results Saved</div>
       <div class="value">{{ total_results_saved }}</div>
@@ -54,6 +60,11 @@
 
   {% if saved_files %}
     <h2>Successfully Processed Files</h2>
+    {% if total_samples_merged and total_samples_merged > 0 %}
+      <p class="subtitle">
+        {{ total_samples_merged }} sample{% if total_samples_merged != 1 %}s{% endif %} merged into pre-existing field event entries.
+      </p>
+    {% endif %}
     <table class="data">
       <thead>
         <tr>
@@ -61,6 +72,7 @@
           <th>Project</th>
           <th>Status</th>
           <th>Samples Saved</th>
+          <th>Samples Merged</th>
           <th>Duplicates Skipped</th>
         </tr>
       </thead>
@@ -80,6 +92,7 @@
               {% endif %}
             </td>
             <td>{{ f.samples_saved }}</td>
+            <td>{{ f.samples_merged or 0 }}</td>
             <td>{{ f.duplicates_skipped }}</td>
           </tr>
         {% endfor %}

@@ -8,6 +8,7 @@ from flask_login import login_required
 from models import db, Project, Sample, Result
 from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
 from routes.projects import _parse_date, _parse_datetime, _parse_numeric
+from utils.sample_id import merge_lab_data_into_sample
 
 uploads_bp = Blueprint("uploads", __name__, url_prefix="/upload")
 
@@ -91,8 +92,19 @@ def _process_uploaded_file(uploaded):
 
         workorder = parser_data.get("workorder")
         file_samples_saved = 0
+        file_samples_merged = 0
         file_results_saved = 0
         file_duplicates_skipped = 0
+
+        # Normalize end_time onto sample_data so merge can pick it up uniformly.
+        for sample_data in samples_in:
+            end_time = sample_data.get("collection_end_time") or sample_data.get("collection_time")
+            sample_data["collection_end_time"] = end_time
+            if not sample_data.get("collection_time"):
+                sample_data["collection_time"] = end_time
+            # Persist workorder into sample_data so merge_lab_data_into_sample picks it up.
+            if not sample_data.get("lab_workorder") and workorder:
+                sample_data["lab_workorder"] = workorder
 
         for sample_data in samples_in:
             client_sample_id = (
@@ -101,38 +113,46 @@ def _process_uploaded_file(uploaded):
                 or "UNKNOWN"
             )
 
-            parsed_methods = _parsed_sample_methods(sample_data)
             existing_matches = Sample.query.filter_by(
                 project_id=project.id,
                 client_sample_id=client_sample_id,
             ).all()
-            has_overlap = any(
-                parsed_methods & _existing_sample_methods(existing)
-                for existing in existing_matches
-            )
-            if has_overlap:
-                file_duplicates_skipped += 1
-                continue
 
-            matrix = (sample_data.get("matrix") or "Other").strip() or "Other"
-            end_time = sample_data.get("collection_end_time") or sample_data.get("collection_time")
-            sample = Sample(
-                project_id=project.id,
-                client_sample_id=client_sample_id,
-                lab_sample_id=sample_data.get("lab_sample_id"),
-                lab_workorder=workorder,
-                matrix=matrix,
-                matrix_code=sample_data.get("matrix_code"),
-                collection_date=_parse_date(sample_data.get("collection_date")),
-                collection_time=end_time,
-                collection_start_time=sample_data.get("collection_start_time"),
-                collection_end_time=end_time,
-                sample_volume=sample_data.get("sample_volume"),
-                pump_flow_rate=sample_data.get("pump_flow_rate"),
-            )
-            db.session.add(sample)
-            db.session.flush()
-            file_samples_saved += 1
+            # Merge target: any existing sample for this ID that has no lab data yet.
+            stub = next((s for s in existing_matches if not s.lab_workorder), None)
+
+            if stub is not None:
+                merge_lab_data_into_sample(stub, sample_data)
+                target_sample = stub
+                file_samples_merged += 1
+            else:
+                parsed_methods = _parsed_sample_methods(sample_data)
+                has_overlap = any(
+                    parsed_methods & _existing_sample_methods(existing)
+                    for existing in existing_matches
+                )
+                if has_overlap:
+                    file_duplicates_skipped += 1
+                    continue
+
+                matrix = (sample_data.get("matrix") or "Other").strip() or "Other"
+                target_sample = Sample(
+                    project_id=project.id,
+                    client_sample_id=client_sample_id,
+                    lab_sample_id=sample_data.get("lab_sample_id"),
+                    lab_workorder=workorder,
+                    matrix=matrix,
+                    matrix_code=sample_data.get("matrix_code"),
+                    collection_date=_parse_date(sample_data.get("collection_date")),
+                    collection_time=sample_data.get("collection_time"),
+                    collection_start_time=sample_data.get("collection_start_time"),
+                    collection_end_time=sample_data.get("collection_end_time"),
+                    sample_volume=sample_data.get("sample_volume"),
+                    pump_flow_rate=sample_data.get("pump_flow_rate"),
+                )
+                db.session.add(target_sample)
+                db.session.flush()
+                file_samples_saved += 1
 
             for r_data in sample_data.get("results") or []:
                 analyte = (r_data.get("analyte") or "").strip()
@@ -140,7 +160,7 @@ def _process_uploaded_file(uploaded):
                 if not analyte or not result_value:
                     continue
                 db.session.add(Result(
-                    sample_id=sample.id,
+                    sample_id=target_sample.id,
                     analyte=analyte,
                     result_value=result_value,
                     result_numeric=_parse_numeric(result_value),
@@ -160,6 +180,7 @@ def _process_uploaded_file(uploaded):
             "project_id": project.id,
             "was_auto_created": was_auto_created,
             "samples_saved": file_samples_saved,
+            "samples_merged": file_samples_merged,
             "results_saved": file_results_saved,
             "duplicates_skipped": file_duplicates_skipped,
         }
@@ -189,6 +210,7 @@ def upload():
     failed_files = []
     auto_created_projects = []
     total_samples_saved = 0
+    total_samples_merged = 0
     total_results_saved = 0
     total_duplicates_skipped = 0
 
@@ -197,6 +219,7 @@ def upload():
         if kind == "saved":
             saved_files.append(entry)
             total_samples_saved += entry["samples_saved"]
+            total_samples_merged += entry.get("samples_merged", 0)
             total_results_saved += entry["results_saved"]
             total_duplicates_skipped += entry["duplicates_skipped"]
             if auto_created_info is not None:
@@ -212,6 +235,7 @@ def upload():
         failed_files=failed_files,
         auto_created_projects=auto_created_projects,
         total_samples_saved=total_samples_saved,
+        total_samples_merged=total_samples_merged,
         total_results_saved=total_results_saved,
         total_duplicates_skipped=total_duplicates_skipped,
     )
@@ -220,16 +244,7 @@ def upload():
 @uploads_bp.route("/start", methods=["POST"])
 @login_required
 def upload_start():
-    session["bulk_upload_results"] = {
-        "saved_files": [],
-        "failed_files": [],
-        "auto_created_projects": [],
-        "totals": {
-            "samples_saved": 0,
-            "results_saved": 0,
-            "duplicates_skipped": 0,
-        },
-    }
+    session["bulk_upload_results"] = _empty_bulk_results()
     session.modified = True
     return jsonify({"success": True})
 
@@ -241,6 +256,7 @@ def _empty_bulk_results():
         "auto_created_projects": [],
         "totals": {
             "samples_saved": 0,
+            "samples_merged": 0,
             "results_saved": 0,
             "duplicates_skipped": 0,
         },
@@ -273,6 +289,7 @@ def upload_single():
         results.setdefault("saved_files", []).append(entry)
         totals = results.setdefault("totals", {})
         totals["samples_saved"] = totals.get("samples_saved", 0) + entry["samples_saved"]
+        totals["samples_merged"] = totals.get("samples_merged", 0) + entry.get("samples_merged", 0)
         totals["results_saved"] = totals.get("results_saved", 0) + entry["results_saved"]
         totals["duplicates_skipped"] = totals.get("duplicates_skipped", 0) + entry["duplicates_skipped"]
         if auto_created_info is not None:
@@ -287,6 +304,7 @@ def upload_single():
             "project_name": entry["project_name"],
             "was_auto_created": entry["was_auto_created"],
             "samples_saved": entry["samples_saved"],
+            "samples_merged": entry.get("samples_merged", 0),
             "duplicates_skipped": entry["duplicates_skipped"],
         }
     else:
@@ -321,6 +339,7 @@ def upload_summary():
         failed_files=results.get("failed_files") or [],
         auto_created_projects=results.get("auto_created_projects") or [],
         total_samples_saved=totals.get("samples_saved", 0),
+        total_samples_merged=totals.get("samples_merged", 0),
         total_results_saved=totals.get("results_saved", 0),
         total_duplicates_skipped=totals.get("duplicates_skipped", 0),
     )
@@ -361,6 +380,7 @@ def save():
     samples_in = parser_data.get("samples") or []
 
     saved_count = 0
+    merged_count = 0
     result_count = 0
     skipped_count = 0
     for idx, sample_data in enumerate(samples_in):
@@ -368,33 +388,44 @@ def save():
         client_sample_id = (sample_data.get("client_sample_id") or sample_data.get("lab_sample_id") or "UNKNOWN")
         save_anyway = request.form.get(f"save_anyway_{idx}") == "on"
 
-        parsed_methods = _parsed_sample_methods(sample_data)
         existing_matches = Sample.query.filter_by(
             project_id=project.id,
             client_sample_id=client_sample_id,
         ).all()
-        has_overlap = any(
-            parsed_methods & _existing_sample_methods(existing)
-            for existing in existing_matches
-        )
-        if has_overlap and not save_anyway:
-            skipped_count += 1
-            continue
+        stub = next((s for s in existing_matches if not s.lab_workorder), None)
 
-        sample = Sample(
-            project_id=project.id,
-            client_sample_id=client_sample_id,
-            lab_sample_id=sample_data.get("lab_sample_id"),
-            lab_workorder=workorder,
-            matrix=matrix,
-            matrix_code=sample_data.get("matrix_code"),
-            collection_date=_parse_date(sample_data.get("collection_date")),
-            collection_time=sample_data.get("collection_time"),
-            sample_volume=sample_data.get("sample_volume"),
-        )
-        db.session.add(sample)
-        db.session.flush()
-        saved_count += 1
+        if stub is not None:
+            if not sample_data.get("lab_workorder") and workorder:
+                sample_data["lab_workorder"] = workorder
+            if not sample_data.get("matrix"):
+                sample_data["matrix"] = matrix
+            merge_lab_data_into_sample(stub, sample_data)
+            target_sample = stub
+            merged_count += 1
+        else:
+            parsed_methods = _parsed_sample_methods(sample_data)
+            has_overlap = any(
+                parsed_methods & _existing_sample_methods(existing)
+                for existing in existing_matches
+            )
+            if has_overlap and not save_anyway:
+                skipped_count += 1
+                continue
+
+            target_sample = Sample(
+                project_id=project.id,
+                client_sample_id=client_sample_id,
+                lab_sample_id=sample_data.get("lab_sample_id"),
+                lab_workorder=workorder,
+                matrix=matrix,
+                matrix_code=sample_data.get("matrix_code"),
+                collection_date=_parse_date(sample_data.get("collection_date")),
+                collection_time=sample_data.get("collection_time"),
+                sample_volume=sample_data.get("sample_volume"),
+            )
+            db.session.add(target_sample)
+            db.session.flush()
+            saved_count += 1
 
         for r_data in sample_data.get("results") or []:
             analyte = (r_data.get("analyte") or "").strip()
@@ -402,7 +433,7 @@ def save():
             if not analyte or not result_value:
                 continue
             db.session.add(Result(
-                sample_id=sample.id,
+                sample_id=target_sample.id,
                 analyte=analyte,
                 result_value=result_value,
                 result_numeric=_parse_numeric(result_value),
@@ -417,6 +448,8 @@ def save():
 
     db.session.commit()
     msg = f"Saved {saved_count} samples and {result_count} results to project {project_number}."
+    if merged_count > 0:
+        msg += f" Merged {merged_count} into existing field event entries."
     if skipped_count > 0:
         msg += f" Skipped {skipped_count} duplicate sample(s)."
     flash(msg, "success")
