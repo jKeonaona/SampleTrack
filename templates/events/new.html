@@ -24,12 +24,13 @@
       </div>
       <div class="field">
         <label for="matrix_code">Matrix *</label>
-        <select id="matrix_code" name="matrix_code" required>
-          <option value="">— Select matrix —</option>
-          {% for code in matrix_code_options %}
-            <option value="{{ code }}" {% if form.matrix_code == code %}selected{% endif %}>{{ code }}</option>
+        <input type="text" name="matrix_code" id="matrix_code" list="matrix_code_options" required maxlength="10" placeholder="e.g. PM, AM, SS, WW, SA, or custom code" value="{{ form.matrix_code or '' }}">
+        <datalist id="matrix_code_options">
+          {% for code, label in matrix_options %}
+            <option value="{{ code }}">{{ code }} - {{ label }}</option>
           {% endfor %}
-        </select>
+        </datalist>
+        <div style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--muted);">Standard codes shown in suggestions. Custom codes accepted if needed.</div>
       </div>
       <div class="field">
         <label for="event_date">Event Date</label>

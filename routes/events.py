@@ -3,9 +3,10 @@ from datetime import datetime
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from models import AirMonitorReport, Project, Sample, SamplingEvent, db
+from models import AirMonitorReport, Project, Result, Sample, SamplingEvent, db
 from utils.sample_id import (
     MATRIX_CODE_OPTIONS,
+    MATRIX_CODE_TO_MATRIX,
     generate_sample_id,
     matrix_from_code,
     next_sequence_number,
@@ -78,15 +79,17 @@ def new():
         form=form,
         available_projects=Project.query.order_by(Project.project_number).all(),
         matrix_code_options=MATRIX_CODE_OPTIONS,
+        matrix_options=sorted(MATRIX_CODE_TO_MATRIX.items()),
     )
 
 
 @events_bp.route("/new", methods=["POST"])
 @login_required
 def create():
+    matrix_code = request.form.get("matrix_code", "").strip().upper()
     form = {
         "project_id": (request.form.get("project_id") or "").strip(),
-        "matrix_code": (request.form.get("matrix_code") or "").strip().upper(),
+        "matrix_code": matrix_code,
         "event_date": (request.form.get("event_date") or "").strip(),
         "expected_sample_count": (request.form.get("expected_sample_count") or "").strip(),
         "notes": (request.form.get("notes") or "").strip(),
@@ -99,7 +102,7 @@ def create():
         project_id = None
     if not project_id:
         errors.append("Project is required.")
-    if form["matrix_code"] not in MATRIX_CODE_OPTIONS:
+    if not form["matrix_code"]:
         errors.append("Matrix is required.")
     try:
         expected_count = int(form["expected_sample_count"]) if form["expected_sample_count"] else 0
@@ -120,6 +123,7 @@ def create():
             form=form,
             available_projects=Project.query.order_by(Project.project_number).all(),
             matrix_code_options=MATRIX_CODE_OPTIONS,
+            matrix_options=sorted(MATRIX_CODE_TO_MATRIX.items()),
         ), 400
 
     event = SamplingEvent(
@@ -177,6 +181,16 @@ def detail(id):
     blanks_count = sum(1 for s in samples if s.is_blank)
     amr_count = len(amr_by_sample_id)
 
+    sample_pk_ids = [s.id for s in samples]
+    result_count = 0
+    if sample_pk_ids:
+        result_count = (
+            db.session.query(db.func.count(Result.id))
+            .filter(Result.sample_id.in_(sample_pk_ids))
+            .scalar()
+            or 0
+        )
+
     return render_template(
         "events/detail.html",
         event=event,
@@ -185,6 +199,7 @@ def detail(id):
         amr_forms=amr_forms,
         blanks_count=blanks_count,
         amr_count=amr_count,
+        result_count=result_count,
         phase_options=PHASE_OPTIONS,
         am_pm_options=AM_PM_OPTIONS,
         temp_unit_options=TEMP_UNIT_OPTIONS,
@@ -219,6 +234,41 @@ def toggle_blank(event_id, sample_id):
         "is_blank": sample.is_blank,
         "had_amr_deleted": had_amr_deleted,
     })
+
+
+@events_bp.route("/<int:event_id>/delete", methods=["POST"])
+@login_required
+def delete_event(event_id):
+    event = SamplingEvent.query.get_or_404(event_id)
+
+    samples_deleted = 0
+    amrs_deleted = 0
+    results_deleted = 0
+
+    for sample in list(event.samples):
+        amrs = AirMonitorReport.query.filter_by(
+            client_sample_id=sample.client_sample_id
+        ).all()
+        for amr in amrs:
+            db.session.delete(amr)
+            amrs_deleted += 1
+
+        results = Result.query.filter_by(sample_id=sample.id).all()
+        for result in results:
+            db.session.delete(result)
+            results_deleted += 1
+
+        db.session.delete(sample)
+        samples_deleted += 1
+
+    db.session.delete(event)
+    db.session.commit()
+    flash(
+        f"Deleted event: {samples_deleted} samples, {amrs_deleted} field reports, "
+        f"{results_deleted} analytical results removed.",
+        "success",
+    )
+    return redirect(url_for("events.list_events"))
 
 
 @events_bp.route("/<int:event_id>/sample/<int:sample_id>/create-amr", methods=["POST"])

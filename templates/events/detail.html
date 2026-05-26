@@ -70,7 +70,18 @@
 
   <div class="toolbar">
     <h1>Sampling Event</h1>
-    <a class="btn secondary" href="{{ url_for('events.list_events') }}">Back to events</a>
+    <div style="display: flex; gap: 0.5rem;">
+      <a class="btn secondary" href="{{ url_for('events.list_events') }}">Back to events</a>
+      <form method="post" action="{{ url_for('events.delete_event', event_id=event.id) }}"
+            style="display: inline;"
+            {% if amr_count == 0 and result_count == 0 %}
+              onsubmit="return confirm('Delete this test event and its {{ samples|length }} generated sample IDs? This cannot be undone.')"
+            {% else %}
+              onsubmit="return confirm('Delete this event? This will remove: {{ samples|length }} samples, {{ amr_count }} field reports, and {{ result_count }} analytical results. This cannot be undone.')"
+            {% endif %}>
+        <button type="submit" class="btn" style="background: var(--danger); border-color: var(--danger);">Delete Event</button>
+      </form>
+    </div>
   </div>
 
   <div class="info-block" style="margin-bottom: 1rem;">
