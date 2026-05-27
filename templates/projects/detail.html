@@ -3,6 +3,41 @@
 {% block title %}{{ project.project_number }}: {{ project.name }}{% endblock %}
 
 {% block content %}
+  <style>
+    .download-menu {
+      position: relative;
+      display: inline-block;
+    }
+    .download-menu summary {
+      cursor: pointer;
+      list-style: none;
+    }
+    .download-menu summary::-webkit-details-marker {
+      display: none;
+    }
+    .download-menu-options {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      min-width: 160px;
+      z-index: 10;
+      margin-top: 4px;
+    }
+    .download-menu-options a {
+      display: block;
+      padding: 8px 12px;
+      text-decoration: none;
+      color: var(--fg);
+    }
+    .download-menu-options a:hover {
+      background: #eef0f4;
+    }
+  </style>
+
   <div class="toolbar">
     <h1 style="display: flex; align-items: center; gap: 0.75rem;">
       <span>{{ project.project_number }}: {{ project.name }}</span>
@@ -36,9 +71,13 @@
     <div style="display: flex; gap: 0.5rem;">
       <a class="btn secondary" href="{{ url_for('projects.edit', project_id=project.id) }}">Edit Project</a>
       <a class="btn" href="{{ url_for('uploads.dump') }}">Upload Lab Report</a>
-      <a class="btn secondary" href="#">Add Sample Manually</a>
-      <a class="btn secondary" href="{{ url_for('projects.export_project', project_id=project.id) }}">⬇ Download CSV</a>
-      <a class="btn secondary" href="{{ url_for('projects.export_project_excel', project_id=project.id) }}">⬇ Download Excel</a>
+      <details class="download-menu">
+        <summary class="btn secondary">⬇ Download ▾</summary>
+        <div class="download-menu-options">
+          <a href="{{ url_for('projects.export_project_excel', project_id=project.id) }}">Excel (.xlsx)</a>
+          <a href="{{ url_for('projects.export_project', project_id=project.id) }}">CSV (.csv)</a>
+        </div>
+      </details>
       {% if project.status == 'archived' %}
         <form method="post" action="{{ url_for('projects.unarchive', project_id=project.id) }}" style="display: inline;"
               onsubmit="return confirm('Unarchive this project? It will return to active status.');">
