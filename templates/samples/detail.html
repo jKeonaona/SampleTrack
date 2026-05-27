@@ -178,7 +178,7 @@
         </h3>
         {% if sample.collection_date %}
           <p style="color: var(--muted); font-size: 0.8rem; margin: 0 0 0.5rem;">
-            Evaluated against thresholds effective {{ sample.collection_date.strftime("%Y-%m-%d") }}.
+            Evaluated against thresholds effective {{ sample.collection_date.strftime("%Y-%m-%d") }}{% if ev.comparison_basis and ev.comparison_basis != "8-hr TWA" %} (basis: {{ ev.comparison_basis }}){% endif %}.
           </p>
         {% endif %}
         <table class="data">

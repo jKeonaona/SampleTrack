@@ -37,6 +37,58 @@ def _reference_date_for(sample):
     return str(cd)
 
 
+def get_applicable_thresholds(result, candidate_thresholds, basis=None):
+    """Filter candidate thresholds to those whose duration matches the result basis.
+
+    Without this filter, a 15-min STEL result would be compared against the
+    8-hr TWA PEL — wrong protective framework for the sampling duration.
+
+    The default fallback (when basis doesn't match any explicit duration rule)
+    is matrix-aware: Area Air → Ambient, Personal Air → PEL/AL,
+    Wipe/Soil/Paint Chip → Clearance.
+    """
+    basis_l = (basis or "").lower()
+
+    def name_has(t, *needles):
+        n = (t.threshold_name or "").lower()
+        return any(needle in n for needle in needles)
+
+    if any(k in basis_l for k in ("twa", "8-hr", "8 hr")):
+        return [t for t in candidate_thresholds if t.threshold_type in ("PEL", "AL")]
+
+    if any(k in basis_l for k in ("stel", "15-min", "15 min")):
+        return [
+            t for t in candidate_thresholds
+            if t.threshold_type == "Ceiling" and name_has(t, "stel", "15")
+        ]
+
+    if any(k in basis_l for k in ("excursion", "30-min", "30 min")):
+        return [
+            t for t in candidate_thresholds
+            if t.threshold_type == "Ceiling" and name_has(t, "excursion", "30")
+        ]
+
+    if "ceiling" in basis_l:
+        return [t for t in candidate_thresholds if t.threshold_type == "Ceiling"]
+
+    if any(k in basis_l for k in ("ambient", "naaqs", "caaqs")):
+        return [t for t in candidate_thresholds if t.threshold_type == "Ambient"]
+
+    if any(k in basis_l for k in ("clearance", "wipe", "soil")):
+        return [t for t in candidate_thresholds if t.threshold_type == "Clearance"]
+
+    # Default fallback: pick the threshold family that matches the sample matrix.
+    sample_matrix = result.sample.matrix if getattr(result, "sample", None) else None
+    if sample_matrix == "Area Air":
+        return [t for t in candidate_thresholds if t.threshold_type == "Ambient"]
+    if sample_matrix == "Personal Air":
+        return [t for t in candidate_thresholds if t.threshold_type in ("PEL", "AL")]
+    if sample_matrix in ("Wipe", "Soil", "Paint Chip"):
+        return [t for t in candidate_thresholds if t.threshold_type == "Clearance"]
+    # Truly unknown matrix — fall through to PEL/AL as the safest default.
+    return [t for t in candidate_thresholds if t.threshold_type in ("PEL", "AL")]
+
+
 def compute_twa_8hr(sample, result):
     if sample.matrix not in AIR_MATRICES:
         return None
@@ -65,7 +117,7 @@ def evaluate_result(sample, result):
         units = result.result_units
 
     reference_date = _reference_date_for(sample)
-    thresholds = (
+    candidate_thresholds = (
         Threshold.query
         .filter(
             Threshold.analyte == result.analyte,
@@ -76,6 +128,7 @@ def evaluate_result(sample, result):
         )
         .all()
     )
+    thresholds = get_applicable_thresholds(result, candidate_thresholds, basis=basis)
 
     if not thresholds:
         return {
