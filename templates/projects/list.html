@@ -8,6 +8,13 @@
     <a class="btn" href="{{ url_for('projects.new') }}">New Project</a>
   </div>
 
+  <form method="get" action="{{ url_for('projects.list_projects') }}" style="margin-bottom: 1rem;">
+    <label style="display: inline-flex; align-items: center; gap: 0.4rem; color: var(--muted); font-size: 0.9rem;">
+      <input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %} onchange="this.form.submit()">
+      Show archived projects
+    </label>
+  </form>
+
   {% if projects %}
     <table class="data">
       <thead>
@@ -27,7 +34,15 @@
             <td>{{ project.name }}</td>
             <td>{{ project.client or "—" }}</td>
             <td>{{ project.location or "—" }}</td>
-            <td><span class="status-pill">{{ project.status }}</span></td>
+            <td>
+              {% if project.status == 'archived' %}
+                <span class="flag-pill no_value">Archived</span>
+              {% elif project.status == 'active' %}
+                <span class="flag-pill ok">Active</span>
+              {% else %}
+                <span class="status-pill">{{ project.status }}</span>
+              {% endif %}
+            </td>
             <td>{{ project.samples|length }}</td>
           </tr>
         {% endfor %}
@@ -35,7 +50,7 @@
     </table>
   {% else %}
     <div class="empty">
-      <p>No projects yet.</p>
+      <p>No projects {% if not show_archived %}active{% endif %} yet.</p>
       <a class="btn" href="{{ url_for('projects.new') }}">New Project</a>
     </div>
   {% endif %}

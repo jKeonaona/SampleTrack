@@ -3,4 +3,5 @@ Flask-SQLAlchemy
 Flask-Login
 python-dotenv
 pdfplumber
+openpyxl
 anthropic

@@ -50,6 +50,7 @@ class Project(db.Model):
     location = db.Column(db.String(200), nullable=True)
     status = db.Column(db.String(20), default="active")
     jurisdiction = db.Column(db.String(20), nullable=False, default="California")
+    archived_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

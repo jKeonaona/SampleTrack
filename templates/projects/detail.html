@@ -4,7 +4,19 @@
 
 {% block content %}
   <div class="toolbar">
-    <h1>{{ project.project_number }}: {{ project.name }}</h1>
+    <h1 style="display: flex; align-items: center; gap: 0.75rem;">
+      <span>{{ project.project_number }}: {{ project.name }}</span>
+      {% if project.status == 'archived' %}
+        <span class="flag-pill no_value" style="font-size: 0.85rem;">Archived</span>
+        {% if project.archived_at %}
+          <span style="color: var(--muted); font-size: 0.85rem; font-weight: normal;">
+            on {{ project.archived_at.strftime("%Y-%m-%d") }}
+          </span>
+        {% endif %}
+      {% else %}
+        <span class="flag-pill ok" style="font-size: 0.85rem;">Active</span>
+      {% endif %}
+    </h1>
     <a class="btn secondary" href="{{ url_for('projects.list_projects') }}">Back to Projects</a>
   </div>
 
@@ -26,6 +38,18 @@
       <a class="btn" href="{{ url_for('uploads.dump') }}">Upload Lab Report</a>
       <a class="btn secondary" href="#">Add Sample Manually</a>
       <a class="btn secondary" href="{{ url_for('projects.export_project', project_id=project.id) }}">⬇ Download CSV</a>
+      <a class="btn secondary" href="{{ url_for('projects.export_project_excel', project_id=project.id) }}">⬇ Download Excel</a>
+      {% if project.status == 'archived' %}
+        <form method="post" action="{{ url_for('projects.unarchive', project_id=project.id) }}" style="display: inline;"
+              onsubmit="return confirm('Unarchive this project? It will return to active status.');">
+          <button type="submit" class="btn secondary">Unarchive Project</button>
+        </form>
+      {% else %}
+        <form method="post" action="{{ url_for('projects.archive', project_id=project.id) }}" style="display: inline;"
+              onsubmit="return confirm('Archive this project? It will be marked as archived but remain editable. You can unarchive at any time.');">
+          <button type="submit" class="btn secondary">Archive Project</button>
+        </form>
+      {% endif %}
     </div>
   </div>
 

@@ -1,15 +1,31 @@
+import io
 import json
 import os
 import tempfile
 from datetime import date, datetime
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, Response, render_template, request, redirect, url_for, flash
 from flask_login import login_required
+from sqlalchemy import or_
 
-from models import db, Project, Sample, Result
+from models import (
+    AirMonitorReport,
+    FieldSampleRecord,
+    Project,
+    Result,
+    Sample,
+    SamplingEvent,
+    Threshold,
+    db,
+)
 from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
-from routes._helpers import csv_response, safe_filename_part
-from utils.calculations import project_status_summary, worst_sample_status
+from routes._helpers import (
+    FLAG_DISPLAY,
+    csv_response,
+    safe_filename_part,
+    _threshold_labels,
+)
+from utils.calculations import evaluate_result, project_status_summary, worst_sample_status
 
 projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
 
@@ -17,8 +33,16 @@ projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
 @projects_bp.route("/", methods=["GET"])
 @login_required
 def list_projects():
-    projects = Project.query.order_by(Project.created_at.desc()).all()
-    return render_template("projects/list.html", projects=projects)
+    show_archived = request.args.get("show_archived") == "1"
+    query = Project.query
+    if not show_archived:
+        query = query.filter(Project.status != "archived")
+    projects = query.order_by(Project.created_at.desc()).all()
+    return render_template(
+        "projects/list.html",
+        projects=projects,
+        show_archived=show_archived,
+    )
 
 
 @projects_bp.route("/new", methods=["GET"])
@@ -105,6 +129,35 @@ def export_project(project_id):
     safe_number = safe_filename_part(project.project_number)
     filename = f"project_{safe_number}_export_{timestamp}.csv"
     return csv_response(samples, filename)
+
+
+@projects_bp.route("/<int:project_id>/archive", methods=["POST"])
+@login_required
+def archive(project_id):
+    project = Project.query.get_or_404(project_id)
+    project.status = "archived"
+    project.archived_at = datetime.utcnow()
+    db.session.commit()
+    flash("Project archived.", "success")
+    return redirect(url_for("projects.detail", project_id=project.id))
+
+
+@projects_bp.route("/<int:project_id>/unarchive", methods=["POST"])
+@login_required
+def unarchive(project_id):
+    project = Project.query.get_or_404(project_id)
+    project.status = "active"
+    project.archived_at = None
+    db.session.commit()
+    flash("Project unarchived.", "success")
+    return redirect(url_for("projects.detail", project_id=project.id))
+
+
+@projects_bp.route("/<int:project_id>/export/excel", methods=["GET"])
+@login_required
+def export_project_excel(project_id):
+    project = Project.query.get_or_404(project_id)
+    return _build_project_excel_response(project)
 
 
 VALID_PROJECT_STATUSES = ("active", "archived", "complete")
@@ -309,3 +362,321 @@ def _parse_numeric(value):
         return float(cleaned)
     except ValueError:
         return None
+
+
+def _fmt_cell(v):
+    if v is None:
+        return ""
+    if isinstance(v, bool):
+        return "Yes" if v else "No"
+    if isinstance(v, datetime):
+        return v.strftime("%Y-%m-%d %H:%M:%S")
+    if isinstance(v, date):
+        return v.strftime("%Y-%m-%d")
+    return v
+
+
+def _write_sheet(ws, headers, rows, auto_filter=True):
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+
+    bold = Font(bold=True)
+    if headers:
+        ws.append(headers)
+        for cell in ws[1]:
+            cell.font = bold
+        ws.freeze_panes = "A2"
+
+    for r in rows:
+        ws.append([_fmt_cell(v) for v in r])
+
+    col_widths = [len(h) for h in headers]
+    for r in rows:
+        for i, v in enumerate(r):
+            text = str(_fmt_cell(v))
+            if len(text) > col_widths[i]:
+                col_widths[i] = len(text)
+    for i, w in enumerate(col_widths):
+        ws.column_dimensions[get_column_letter(i + 1)].width = min(max(w + 2, 10), 60)
+
+    if auto_filter and rows and headers:
+        last_col = get_column_letter(len(headers))
+        ws.auto_filter.ref = f"A1:{last_col}{len(rows) + 1}"
+
+
+def _build_project_excel_response(project):
+    from openpyxl import Workbook
+
+    samples = (
+        Sample.query
+        .filter_by(project_id=project.id)
+        .order_by(Sample.collection_date.asc().nullsfirst(), Sample.client_sample_id.asc())
+        .all()
+    )
+    sample_ids = [s.id for s in samples]
+    client_ids = [s.client_sample_id for s in samples if s.client_sample_id]
+
+    events = (
+        SamplingEvent.query
+        .filter_by(project_id=project.id)
+        .order_by(SamplingEvent.event_date.asc().nullsfirst(), SamplingEvent.created_at.asc())
+        .all()
+    )
+
+    amrs = []
+    fsrs = []
+    if client_ids:
+        amrs = (
+            AirMonitorReport.query
+            .filter(AirMonitorReport.client_sample_id.in_(client_ids))
+            .all()
+        )
+        fsrs = (
+            FieldSampleRecord.query
+            .filter(FieldSampleRecord.client_sample_id.in_(client_ids))
+            .all()
+        )
+
+    results = []
+    if sample_ids:
+        results = (
+            Result.query
+            .filter(Result.sample_id.in_(sample_ids))
+            .all()
+        )
+
+    sample_by_id = {s.id: s for s in samples}
+    event_sample_counts = {e.id: 0 for e in events}
+    for s in samples:
+        if s.sampling_event_id in event_sample_counts:
+            event_sample_counts[s.sampling_event_id] += 1
+
+    wb = Workbook()
+
+    # 1. Project Info
+    ws = wb.active
+    ws.title = "Project Info"
+    from openpyxl.styles import Font
+    bold = Font(bold=True)
+    info_rows = [
+        ("Project Number", project.project_number),
+        ("Project Name", project.name),
+        ("Client", project.client),
+        ("Location", project.location),
+        ("Status", project.status),
+        ("Jurisdiction", project.jurisdiction),
+    ]
+    if project.status == "archived" and project.archived_at:
+        info_rows.append(("Archived At", project.archived_at))
+    info_rows.extend([
+        ("Created At", project.created_at),
+        ("Updated At", project.updated_at),
+    ])
+    for k, v in info_rows:
+        ws.append([k, _fmt_cell(v)])
+    for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=1):
+        for cell in row:
+            cell.font = bold
+    ws.column_dimensions["A"].width = 24
+    ws.column_dimensions["B"].width = 60
+
+    # 2. Sampling Events
+    ws = wb.create_sheet("Sampling Events")
+    _write_sheet(
+        ws,
+        ["Event ID", "Event Date", "Matrix Code", "Expected Count", "Actual Count",
+         "Notes", "Created By", "Created At"],
+        [
+            [
+                e.id, e.event_date, e.matrix_code, e.expected_sample_count,
+                event_sample_counts.get(e.id, 0),
+                e.notes,
+                (e.created_by.name or e.created_by.email) if e.created_by else None,
+                e.created_at,
+            ]
+            for e in events
+        ],
+    )
+
+    # 3. Samples
+    ws = wb.create_sheet("Samples")
+    _write_sheet(
+        ws,
+        ["Sample ID", "Client Sample ID", "Sampling Event ID", "Sequence Number",
+         "Matrix", "Matrix Code", "Is Blank", "Collection Date",
+         "Collection Start Time", "Collection End Time", "Sample Volume",
+         "Pump Flow Rate", "Lab Workorder", "Lab Sample ID", "Employee Name",
+         "Work Area", "Task Description", "Created At"],
+        [
+            [
+                s.id, s.client_sample_id, s.sampling_event_id, s.sequence_number,
+                s.matrix, s.matrix_code, bool(s.is_blank), s.collection_date,
+                s.collection_start_time, s.collection_end_time, s.sample_volume,
+                s.pump_flow_rate, s.lab_workorder, s.lab_sample_id, s.employee_name,
+                s.work_area, s.task_description, s.created_at,
+            ]
+            for s in samples
+        ],
+    )
+
+    # 4. Field Air Monitor Reports
+    ws = wb.create_sheet("Field Air Monitor Reports")
+    _write_sheet(
+        ws,
+        ["ID", "Client Sample ID", "Monitoring Date", "Monitoring Phase",
+         "Pump Serial", "Cassette Number", "Time Started", "AM/PM Started",
+         "Time Stopped", "AM/PM Stopped", "Total Hours", "Total Minutes",
+         "Liters/Minute", "Calibrated Before", "Calibrated Before Rate",
+         "Calibrated Before By", "Calibrated After", "Calibrated After Rate",
+         "Calibrated After By", "Last Calibration Date", "Measured Rate",
+         "Used Since Calibration", "Is Personal Sample", "Worker Monitored",
+         "Job Duties", "PPE Worn", "Cassette Worn Properly",
+         "Dragged Through Abrasive", "Unusual Happened", "Unusual Details",
+         "Is Area Sample", "Monitor Location", "Blasting Location",
+         "Area Unusual Events", "Weather Conditions", "Temperature Value",
+         "Temperature Unit", "Wind Speed/Direction", "Placed By", "Removed By",
+         "Laboratory Sent To", "Date Sent to Lab", "Created At"],
+        [
+            [
+                a.id, a.client_sample_id, a.monitoring_date, a.monitoring_phase,
+                a.pump_serial, a.cassette_number, a.time_started, a.am_pm_started,
+                a.time_stopped, a.am_pm_stopped, a.total_hours, a.total_minutes,
+                a.liters_per_minute, bool(a.calibrated_before), a.calibrated_before_rate,
+                a.calibrated_before_by, bool(a.calibrated_after), a.calibrated_after_rate,
+                a.calibrated_after_by, a.last_calibration_date, a.measured_rate,
+                bool(a.used_since_calibration), bool(a.is_personal_sample),
+                a.worker_monitored, a.job_duties, a.ppe_worn,
+                bool(a.cassette_worn_properly), bool(a.dragged_through_abrasive),
+                bool(a.unusual_happened), a.unusual_details, bool(a.is_area_sample),
+                a.monitor_location, a.blasting_location, a.area_unusual_events,
+                a.weather_conditions, a.temperature_value, a.temperature_unit,
+                a.wind_speed_direction, a.placed_by, a.removed_by,
+                a.laboratory_sent_to, a.date_sent_to_lab, a.created_at,
+            ]
+            for a in amrs
+        ],
+    )
+
+    # 5. Field Sample Records
+    ws = wb.create_sheet("Field Sample Records")
+    _write_sheet(
+        ws,
+        ["ID", "Client Sample ID", "Collection Date", "Collection Time",
+         "Collected By", "Location Description", "Matrix-Specific Notes",
+         "Analytical Methods Requested", "Laboratory Sent To", "Date Sent to Lab",
+         "General Notes", "Created At"],
+        [
+            [
+                f.id, f.client_sample_id, f.collection_date, f.collection_time,
+                f.collected_by, f.location_description, f.matrix_specific_notes,
+                f.analytical_methods_requested, f.laboratory_sent_to, f.date_sent_to_lab,
+                f.general_notes, f.created_at,
+            ]
+            for f in fsrs
+        ],
+    )
+
+    # 6. Analytical Results
+    ws = wb.create_sheet("Analytical Results")
+    result_rows = []
+    for r in results:
+        s = sample_by_id.get(r.sample_id)
+        if s is None:
+            continue
+        ev = evaluate_result(s, r)
+        exceeded = _threshold_labels(ev["evaluations"], "exceeded")
+        approaching = _threshold_labels(ev["evaluations"], "approaching")
+        result_rows.append([
+            r.id, r.sample_id, s.client_sample_id, r.analyte, r.result_value,
+            r.result_numeric, r.result_units, r.reporting_limit, r.dilution_factor,
+            r.method_reference, r.date_analyzed,
+            ev.get("comparison_basis") or "", ev.get("comparison_value"),
+            FLAG_DISPLAY.get(ev.get("overall_status"), ""),
+            "; ".join(exceeded), "; ".join(approaching),
+        ])
+    _write_sheet(
+        ws,
+        ["Result ID", "Sample ID", "Client Sample ID", "Analyte", "Result Value",
+         "Result Numeric", "Units", "RL", "DF", "Method", "Date Analyzed",
+         "Comparison Basis", "Comparison Value", "Flag Status",
+         "Thresholds Exceeded", "Thresholds Approaching"],
+        result_rows,
+    )
+
+    # 7. Thresholds As-Evaluated
+    ws = wb.create_sheet("Thresholds As-Evaluated")
+    threshold_rows = _thresholds_as_evaluated(project, samples, results)
+    _write_sheet(
+        ws,
+        ["Analyte", "Matrix", "Threshold Name", "Regulatory Body", "Value",
+         "Units", "Threshold Type", "Jurisdiction", "Effective Date",
+         "Superseded Date", "Source Citation"],
+        threshold_rows,
+    )
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    today = datetime.utcnow().strftime("%Y%m%d")
+    safe_number = safe_filename_part(project.project_number)
+    safe_name = safe_filename_part(project.name or "project")
+    filename = f"{safe_number}_{safe_name}_export_{today}.xlsx"
+
+    return Response(
+        buf.getvalue(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def _thresholds_as_evaluated(project, samples, results):
+    """Threshold rows that could have applied to this project's samples.
+
+    For each unique (analyte, matrix) pair from results, find thresholds whose
+    effective window overlaps the project's collection-date range and whose
+    jurisdiction matches the project (or is 'Both').
+    """
+    pairs = set()
+    sample_by_id = {s.id: s for s in samples}
+    for r in results:
+        s = sample_by_id.get(r.sample_id)
+        if s is None or not r.analyte or not s.matrix:
+            continue
+        pairs.add((r.analyte, s.matrix))
+
+    if not pairs:
+        return []
+
+    collection_dates = [s.collection_date for s in samples if s.collection_date]
+    if collection_dates:
+        min_iso = min(collection_dates).isoformat()
+        max_iso = max(collection_dates).isoformat()
+    else:
+        today = date.today().isoformat()
+        min_iso = max_iso = today
+
+    jurisdiction = project.jurisdiction or "California"
+    rows = []
+    for analyte, matrix in sorted(pairs):
+        thresholds = (
+            Threshold.query
+            .filter(
+                Threshold.analyte == analyte,
+                Threshold.matrix == matrix,
+                Threshold.jurisdiction.in_([jurisdiction, "Both"]),
+                or_(Threshold.effective_date.is_(None),
+                    Threshold.effective_date <= max_iso),
+                or_(Threshold.superseded_date.is_(None),
+                    Threshold.superseded_date > min_iso),
+            )
+            .order_by(Threshold.threshold_name.asc())
+            .all()
+        )
+        for t in thresholds:
+            rows.append([
+                t.analyte, t.matrix, t.threshold_name, t.regulatory_body,
+                t.value, t.units, t.threshold_type, t.jurisdiction,
+                t.effective_date, t.superseded_date, t.source_citation,
+            ])
+    return rows
