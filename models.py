@@ -1,9 +1,14 @@
+import re
 from datetime import datetime
 
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
 db = SQLAlchemy()
+
+_STANDARD_ID_RE = re.compile(
+    r"^\d+-(PM|AM|SS|ES|WW|PC|WS|SA)-\d+(-[A-Za-z])?(\s+.*)?$"
+)
 
 
 class User(db.Model):
@@ -89,6 +94,17 @@ class Sample(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     results = db.relationship("Result", backref="sample", cascade="all, delete-orphan")
+
+    @property
+    def is_standard_id_format(self):
+        """True if client_sample_id matches the canonical <job>-<MATRIX>-<###> format.
+
+        Computed on access — never stored — so editing the ID re-evaluates
+        the flag automatically.
+        """
+        if not self.client_sample_id:
+            return False
+        return bool(_STANDARD_ID_RE.match(self.client_sample_id))
 
 
 class Threshold(db.Model):

@@ -15,6 +15,9 @@
       <div class="field">
         <label for="client_sample_id">Client Sample ID</label>
         <input type="text" id="client_sample_id" name="client_sample_id" required value="{{ form.client_sample_id or '' }}">
+        <div style="color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem;">
+          Standard format: &lt;job&gt;-&lt;MATRIX&gt;-&lt;###&gt;. MATRIX codes: PM (Personal Air), AM (Area Air), SS (Soil), ES (Excavated Soil), WW (Waste Water), PC (Paint Chip), WS (Wipe), SA (Spent Abrasives).
+        </div>
       </div>
       <div class="field">
         <label for="lab_sample_id">Lab Sample ID</label>

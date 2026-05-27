@@ -25,9 +25,18 @@ PREFIX_MAP = {
     "WW": "Liquid",
     "PC": "Paint Chip",
     "WS": "Wipe",
+    "SA": "Spent Abrasive",
 }
 
 PREFIX_RE = re.compile(r"(?:^|-)([A-Za-z]{2})(?:-|$)")
+
+# Relaxed boundary set: digits, dashes, underscores, whitespace. Catches
+# legacy IDs where the matrix code is jammed against digits or separated by
+# underscores instead of dashes, e.g.:
+#   "1643-37-2026PM"            (PM bounded by digit and end-of-string)
+#   "1643-37-2026PM (Pump #1)"  (PM bounded by digit and space)
+#   "1604-001-2022MTLS_PM_BLANK" (PM bounded by underscores)
+PREFIX_RE_RELAXED = re.compile(r"(?:^|[\d\-_\s])([A-Za-z]{2})(?:[\d\-_\s]|$)")
 
 
 MATRIX_OPTIONS = [
@@ -108,14 +117,29 @@ USER_PROMPT = (
 
 
 def _detect_prefix_code(client_sample_id: Optional[str]) -> Optional[str]:
-    """Find the first 2-letter matrix prefix code in the sample ID."""
+    """Find the 2-letter matrix prefix code in the sample ID.
+
+    Strict canonical pattern first (codes bounded by dashes or string edges).
+    If that fails, fall back to a relaxed pattern that also accepts digit,
+    underscore, and whitespace boundaries — for legacy IDs like
+    "1643-37-2026PM" where the matrix code is jammed against digits. When
+    the relaxed pattern yields multiple matches, prefer the rightmost.
+    """
     if not client_sample_id:
         return None
-    for match in PREFIX_RE.finditer(client_sample_id.upper()):
+    upper_id = client_sample_id.upper()
+
+    for match in PREFIX_RE.finditer(upper_id):
         code = match.group(1)
         if code in PREFIX_MAP:
             return code
-    return None
+
+    last_valid = None
+    for match in PREFIX_RE_RELAXED.finditer(upper_id):
+        code = match.group(1)
+        if code in PREFIX_MAP:
+            last_valid = code
+    return last_valid
 
 
 def _detect_prefix_matrix(client_sample_id: Optional[str]) -> Optional[str]:

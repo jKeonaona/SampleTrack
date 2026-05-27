@@ -121,7 +121,13 @@
         {% for s in samples %}
           {% set status = sample_statuses.get(s.id, "no_results") %}
           <tr>
-            <td><a href="{{ url_for('samples.detail', sample_id=s.id) }}">{{ s.client_sample_id }}</a></td>
+            <td>
+              <a href="{{ url_for('samples.detail', sample_id=s.id) }}">{{ s.client_sample_id }}</a>
+              {% if not s.is_standard_id_format %}
+                <span title="Non-standard ID format — needs review."
+                      style="color: #b45309; font-weight: bold; margin-left: 0.25rem; cursor: help;">*</span>
+              {% endif %}
+            </td>
             <td><a href="{{ url_for('projects.detail', project_id=s.project_id) }}">{{ s.project.project_number }}</a></td>
             <td>{{ s.matrix }}</td>
             <td>{{ s.collection_date.strftime("%Y-%m-%d") if s.collection_date else "—" }}</td>
