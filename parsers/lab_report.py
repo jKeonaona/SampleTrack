@@ -263,6 +263,39 @@ def _strip_code_fences(text):
     return inner.strip()
 
 
+_BLK_TOKEN_RE = re.compile(r"(?:^|[\s\-_])BLK(?:$|[\s\-_])", re.IGNORECASE)
+_FB_TB_SUFFIX_RE = re.compile(r"(?:^|[\s\-_])(FB|TB)$")
+
+
+def detect_blank(client_sample_id, lab_description=None):
+    """Return True if this sample appears to be a field/trip blank.
+
+    Triggers:
+      - 'blank' substring anywhere in client_sample_id (case-insensitive)
+      - 'BLK' as a standalone token bounded by whitespace, dash, underscore,
+        or string boundary (case-insensitive)
+      - 'FB' or 'TB' as a trailing token bounded the same way, case-sensitive
+        (so 'FBI', 'TBA', 'AB' don't trigger)
+      - lab_description contains 'field blank' or 'trip blank' (case-insensitive)
+    """
+    cid = client_sample_id or ""
+    cid_lower = cid.lower()
+
+    if "blank" in cid_lower:
+        return True
+    if _BLK_TOKEN_RE.search(cid):
+        return True
+    if _FB_TB_SUFFIX_RE.search(cid):
+        return True
+
+    if lab_description:
+        desc_lower = lab_description.lower()
+        if "field blank" in desc_lower or "trip blank" in desc_lower:
+            return True
+
+    return False
+
+
 def _normalize_samples(samples_in):
     out = []
     for sample in samples_in:
@@ -270,12 +303,18 @@ def _normalize_samples(samples_in):
             continue
         client_sample_id = sample.get("client_sample_id") or ""
         matrix_raw = sample.get("matrix_raw") or ""
+        lab_description = (
+            sample.get("description")
+            or sample.get("notes")
+            or sample.get("sample_description")
+        )
         normalized = {
             "client_sample_id": client_sample_id,
             "lab_sample_id": sample.get("lab_sample_id") or "",
             "matrix_raw": matrix_raw,
             "matrix": map_matrix(matrix_raw, client_sample_id),
             "matrix_code": _detect_prefix_code(client_sample_id),
+            "is_blank": detect_blank(client_sample_id, lab_description),
             "collection_date": sample.get("collection_date"),
             "collection_start_time": sample.get("collection_start_time"),
             "collection_end_time": sample.get("collection_end_time"),

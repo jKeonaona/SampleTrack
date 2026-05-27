@@ -148,7 +148,7 @@ def detail(sample_id):
         sample.matrix == "Personal Air"
         or (sample.matrix_code and sample.matrix_code.upper() == "PM")
     )
-    if is_personal_air and sample.project is not None:
+    if is_personal_air and sample.project is not None and not sample.is_blank:
         jurisdiction = sample.project.jurisdiction or "California"
         for r in results:
             ev = result_evaluations.get(r.id)
@@ -204,6 +204,7 @@ def edit_save(sample_id):
         "lab_sample_id": (request.form.get("lab_sample_id") or "").strip(),
         "lab_workorder": (request.form.get("lab_workorder") or "").strip(),
         "matrix": (request.form.get("matrix") or "").strip(),
+        "is_blank": request.form.get("is_blank") == "on",
         "collection_date": (request.form.get("collection_date") or "").strip(),
         "collection_time": (request.form.get("collection_time") or "").strip(),
         "collection_start_time": (request.form.get("collection_start_time") or "").strip(),
@@ -239,6 +240,7 @@ def edit_save(sample_id):
     sample.lab_sample_id = form["lab_sample_id"] or None
     sample.lab_workorder = form["lab_workorder"] or None
     sample.matrix = form["matrix"]
+    sample.is_blank = bool(form["is_blank"])
     sample.collection_date = collection_date
     sample.collection_time = form["collection_time"] or None
     sample.collection_start_time = form["collection_start_time"] or None
@@ -265,6 +267,7 @@ def _form_from_sample(sample):
         "lab_sample_id": sample.lab_sample_id or "",
         "lab_workorder": sample.lab_workorder or "",
         "matrix": sample.matrix or "",
+        "is_blank": bool(sample.is_blank),
         "collection_date": sample.collection_date.strftime("%Y-%m-%d") if sample.collection_date else "",
         "collection_time": sample.collection_time or "",
         "collection_start_time": sample.collection_start_time or "",

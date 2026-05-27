@@ -290,6 +290,7 @@ def upload_save(project_id):
             lab_workorder=workorder,
             matrix=matrix,
             matrix_code=sample_data.get("matrix_code"),
+            is_blank=bool(sample_data.get("is_blank")),
             collection_date=_parse_date(sample_data.get("collection_date")),
             collection_time=sample_data.get("collection_time"),
             sample_volume=sample_data.get("sample_volume"),

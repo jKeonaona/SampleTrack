@@ -4,7 +4,12 @@
 
 {% block content %}
   <div class="toolbar">
-    <h1>Sample: {{ sample.client_sample_id }}</h1>
+    <h1 style="display: flex; align-items: center; gap: 0.75rem;">
+      <span>Sample: {{ sample.client_sample_id }}</span>
+      {% if sample.is_blank %}
+        <span class="flag-pill no_value" style="font-size: 0.85rem;">Field Blank</span>
+      {% endif %}
+    </h1>
     <div style="display: flex; gap: 0.5rem;">
       <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Back to Project</a>
       <a class="btn" href="{{ url_for('samples.edit', sample_id=sample.id) }}">Edit Sample</a>

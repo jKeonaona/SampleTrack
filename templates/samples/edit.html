@@ -32,6 +32,15 @@
           {% endfor %}
         </select>
       </div>
+      <div class="field">
+        <label style="display: inline-flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" id="is_blank" name="is_blank" {% if form.is_blank %}checked{% endif %}>
+          Field Blank
+        </label>
+        <div style="color: var(--muted); font-size: 0.8rem; margin-top: 0.25rem;">
+          Mark this sample as a field blank (not a real exposure measurement). Disables APF respirator recommendations.
+        </div>
+      </div>
     </div>
 
     <h2 style="margin-top: 1.5rem;">Collection</h2>
