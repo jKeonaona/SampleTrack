@@ -10,7 +10,6 @@ Idempotent: re-running skips events / AMRs / FSRs that already exist.
 """
 
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -23,58 +22,13 @@ from models import (
     SamplingEvent,
     db,
 )
-
-
-# Map Sample.matrix -> two-letter code.
-# Existing data may use either "Spent Abrasive" (parser canonical) or
-# "Spent Abrasives" (spec text). Both map to SA. Likewise "Liquid"
-# (parser canonical) and "Waste Water" (spec text) both map to WW.
-MATRIX_CODE_MAP = {
-    "Personal Air": "PM",
-    "Area Air": "AM",
-    "Wipe": "WS",
-    "Soil": "SS",
-    "Excavated Soil": "ES",
-    "Paint Chip": "PC",
-    "Spent Abrasive": "SA",
-    "Spent Abrasives": "SA",
-    "Liquid": "WW",
-    "Waste Water": "WW",
-}
-
-AIR_MATRICES = ("Personal Air", "Area Air")
-
-_NUMBER_RE = re.compile(r"-?\d+\.?\d*")
-
-
-def parse_numeric(value):
-    """Pull the first numeric token out of a free-form string like '2.0 L/min'."""
-    if value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    match = _NUMBER_RE.search(str(value).strip())
-    if match is None:
-        return None
-    try:
-        return float(match.group())
-    except (TypeError, ValueError):
-        return None
-
-
-def matrix_code_for(matrix):
-    if not matrix:
-        return "UN"
-    return MATRIX_CODE_MAP.get(matrix, "UN")
-
-
-def event_date_str(collection_date):
-    """Sample.collection_date is a Date; SamplingEvent.event_date is a String."""
-    if collection_date is None:
-        return None
-    if hasattr(collection_date, "isoformat"):
-        return collection_date.isoformat()
-    return str(collection_date)
+from utils.field_records import (
+    AIR_MATRICES,
+    MATRIX_CODE_MAP,
+    event_date_str,
+    matrix_code_for,
+    parse_numeric,
+)
 
 
 def main():

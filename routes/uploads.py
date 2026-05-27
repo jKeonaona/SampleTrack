@@ -5,9 +5,10 @@ import tempfile
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_required
 
-from models import db, Project, Sample, Result
+from models import AirMonitorReport, db, FieldSampleRecord, Project, Sample, Result, SamplingEvent
 from parsers.lab_report import MATRIX_OPTIONS, parse_lab_report
 from routes.projects import _parse_date, _parse_datetime, _parse_numeric
+from utils.field_records import ensure_event_for_sample, ensure_field_record_for_sample
 from utils.sample_id import merge_lab_data_into_sample
 
 uploads_bp = Blueprint("uploads", __name__, url_prefix="/upload")
@@ -95,6 +96,8 @@ def _process_uploaded_file(uploaded):
         file_samples_merged = 0
         file_results_saved = 0
         file_duplicates_skipped = 0
+        file_events_created = 0
+        file_records_created = 0
 
         # Normalize end_time onto sample_data so merge can pick it up uniformly.
         for sample_data in samples_in:
@@ -154,6 +157,13 @@ def _process_uploaded_file(uploaded):
                 db.session.flush()
                 file_samples_saved += 1
 
+            _event, event_created = ensure_event_for_sample(target_sample)
+            if event_created:
+                file_events_created += 1
+            _record, record_created = ensure_field_record_for_sample(target_sample)
+            if record_created:
+                file_records_created += 1
+
             for r_data in sample_data.get("results") or []:
                 analyte = (r_data.get("analyte") or "").strip()
                 result_value = (r_data.get("result_value") or "").strip()
@@ -183,6 +193,8 @@ def _process_uploaded_file(uploaded):
             "samples_merged": file_samples_merged,
             "results_saved": file_results_saved,
             "duplicates_skipped": file_duplicates_skipped,
+            "events_created": file_events_created,
+            "records_created": file_records_created,
         }
         return "saved", entry, auto_created_info
     finally:
@@ -213,6 +225,8 @@ def upload():
     total_samples_merged = 0
     total_results_saved = 0
     total_duplicates_skipped = 0
+    total_events_created = 0
+    total_records_created = 0
 
     for uploaded in files:
         kind, entry, auto_created_info = _process_uploaded_file(uploaded)
@@ -222,6 +236,8 @@ def upload():
             total_samples_merged += entry.get("samples_merged", 0)
             total_results_saved += entry["results_saved"]
             total_duplicates_skipped += entry["duplicates_skipped"]
+            total_events_created += entry.get("events_created", 0)
+            total_records_created += entry.get("records_created", 0)
             if auto_created_info is not None:
                 auto_created_projects.append(auto_created_info)
         else:
@@ -238,6 +254,8 @@ def upload():
         total_samples_merged=total_samples_merged,
         total_results_saved=total_results_saved,
         total_duplicates_skipped=total_duplicates_skipped,
+        total_events_created=total_events_created,
+        total_records_created=total_records_created,
     )
 
 
@@ -259,6 +277,8 @@ def _empty_bulk_results():
             "samples_merged": 0,
             "results_saved": 0,
             "duplicates_skipped": 0,
+            "events_created": 0,
+            "records_created": 0,
         },
     }
 
@@ -292,6 +312,8 @@ def upload_single():
         totals["samples_merged"] = totals.get("samples_merged", 0) + entry.get("samples_merged", 0)
         totals["results_saved"] = totals.get("results_saved", 0) + entry["results_saved"]
         totals["duplicates_skipped"] = totals.get("duplicates_skipped", 0) + entry["duplicates_skipped"]
+        totals["events_created"] = totals.get("events_created", 0) + entry.get("events_created", 0)
+        totals["records_created"] = totals.get("records_created", 0) + entry.get("records_created", 0)
         if auto_created_info is not None:
             existing_ids = {p["id"] for p in results.setdefault("auto_created_projects", [])}
             if auto_created_info["id"] not in existing_ids:
@@ -306,6 +328,8 @@ def upload_single():
             "samples_saved": entry["samples_saved"],
             "samples_merged": entry.get("samples_merged", 0),
             "duplicates_skipped": entry["duplicates_skipped"],
+            "events_created": entry.get("events_created", 0),
+            "records_created": entry.get("records_created", 0),
         }
     else:
         results.setdefault("failed_files", []).append(entry)
@@ -342,6 +366,8 @@ def upload_summary():
         total_samples_merged=totals.get("samples_merged", 0),
         total_results_saved=totals.get("results_saved", 0),
         total_duplicates_skipped=totals.get("duplicates_skipped", 0),
+        total_events_created=totals.get("events_created", 0),
+        total_records_created=totals.get("records_created", 0),
     )
 
 
@@ -383,6 +409,8 @@ def save():
     merged_count = 0
     result_count = 0
     skipped_count = 0
+    events_created_count = 0
+    records_created_count = 0
     for idx, sample_data in enumerate(samples_in):
         matrix = (request.form.get(f"matrix_{idx}") or sample_data.get("matrix") or "Other").strip()
         client_sample_id = (sample_data.get("client_sample_id") or sample_data.get("lab_sample_id") or "UNKNOWN")
@@ -427,6 +455,13 @@ def save():
             db.session.flush()
             saved_count += 1
 
+        _event, event_created = ensure_event_for_sample(target_sample)
+        if event_created:
+            events_created_count += 1
+        _record, record_created = ensure_field_record_for_sample(target_sample)
+        if record_created:
+            records_created_count += 1
+
         for r_data in sample_data.get("results") or []:
             analyte = (r_data.get("analyte") or "").strip()
             result_value = (r_data.get("result_value") or "").strip()
@@ -450,6 +485,10 @@ def save():
     msg = f"Saved {saved_count} samples and {result_count} results to project {project_number}."
     if merged_count > 0:
         msg += f" Merged {merged_count} into existing field event entries."
+    if events_created_count > 0:
+        msg += f" Created {events_created_count} new Sampling Event(s)."
+    if records_created_count > 0:
+        msg += f" Created {records_created_count} Field Record(s)."
     if skipped_count > 0:
         msg += f" Skipped {skipped_count} duplicate sample(s)."
     flash(msg, "success")

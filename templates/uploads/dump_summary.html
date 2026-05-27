@@ -34,6 +34,18 @@
       <div class="label">Results Saved</div>
       <div class="value">{{ total_results_saved }}</div>
     </div>
+    {% if total_events_created and total_events_created > 0 %}
+      <div class="stat-card" style="background: #ecfdf5; border-color: #86efac;">
+        <div class="label">Sampling Events Created</div>
+        <div class="value">{{ total_events_created }}</div>
+      </div>
+    {% endif %}
+    {% if total_records_created and total_records_created > 0 %}
+      <div class="stat-card" style="background: #ecfdf5; border-color: #86efac;">
+        <div class="label">Field Records Created</div>
+        <div class="value">{{ total_records_created }}</div>
+      </div>
+    {% endif %}
     <div class="stat-card"{% if total_duplicates_skipped > 0 %} style="background: #fef3c7; border-color: #fcd34d;"{% endif %}>
       <div class="label">Duplicates Skipped</div>
       <div class="value">{{ total_duplicates_skipped }}</div>
