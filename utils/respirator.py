@@ -74,29 +74,43 @@ def recommend_respirator(twa_value, analyte, project_jurisdiction, collection_da
         .first()
     )
 
-    if not al or not pel:
+    if not pel:
         return {
             "status": "unavailable",
-            "note": f"No AL/PEL defined for {analyte} in {project_jurisdiction} jurisdiction",
+            "note": f"No PEL defined for {analyte} in {project_jurisdiction} jurisdiction",
             "required_apf": None,
             "respirator_type": None,
             "al_value": al.value if al else None,
-            "pel_value": pel.value if pel else None,
+            "pel_value": None,
             "jurisdiction_used": project_jurisdiction,
+            "trigger_threshold_type": None,
         }
 
-    al_value = al.value
+    al_value = al.value if al else None
     pel_value = pel.value
 
-    if twa_value < al_value:
+    if al is not None:
+        trigger_threshold = al_value
+        trigger_threshold_type = "AL"
+        below_note = f"TWA below Action Level ({al_value} {al.units})"
+    else:
+        trigger_threshold = pel_value / 2
+        trigger_threshold_type = "Informal AL (1/2 PEL)"
+        below_note = (
+            f"TWA below CCC informal Action Level ({trigger_threshold} {pel.units}, "
+            "calculated as 1/2 PEL since no formal AL is defined for this analyte)."
+        )
+
+    if twa_value < trigger_threshold:
         return {
             "status": "none_required",
-            "note": f"TWA below Action Level ({al_value} {al.units})",
+            "note": below_note,
             "required_apf": None,
             "respirator_type": None,
             "al_value": al_value,
             "pel_value": pel_value,
             "jurisdiction_used": project_jurisdiction,
+            "trigger_threshold_type": trigger_threshold_type,
         }
 
     for apf, description in CCC_RESPIRATOR_TIERS:
@@ -109,6 +123,7 @@ def recommend_respirator(twa_value, analyte, project_jurisdiction, collection_da
                 "al_value": al_value,
                 "pel_value": pel_value,
                 "jurisdiction_used": project_jurisdiction,
+                "trigger_threshold_type": trigger_threshold_type,
             }
 
     return {
@@ -119,6 +134,7 @@ def recommend_respirator(twa_value, analyte, project_jurisdiction, collection_da
         "al_value": al_value,
         "pel_value": pel_value,
         "jurisdiction_used": project_jurisdiction,
+        "trigger_threshold_type": trigger_threshold_type,
     }
 
 

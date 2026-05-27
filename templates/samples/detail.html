@@ -271,7 +271,14 @@
               <td><span class="flag-pill {{ status_pill_class.get(rec.status, 'no_value') }}">{{ status_label.get(rec.status, rec.status) }}</span></td>
               <td>{{ rec.required_apf if rec.required_apf else "—" }}</td>
               <td>{{ rec.respirator_type or "—" }}</td>
-              <td>{{ rec.note or "" }}</td>
+              <td>
+                {{ rec.note or "" }}
+                {% if rec.trigger_threshold_type == "Informal AL (1/2 PEL)" and rec.status != "unavailable" %}
+                  <div style="color: var(--muted); font-size: 0.75rem; margin-top: 0.25rem;">
+                    (triggered at informal AL = 1/2 PEL — no formal AL defined)
+                  </div>
+                {% endif %}
+              </td>
             </tr>
           {% endif %}
         {% endfor %}
@@ -281,6 +288,11 @@
       This recommendation reflects CCC's policy of providing respiratory protection at the
       Action Level. The OSHA minimum requires respirators at the PEL. Recommendations use
       the {{ jurisdiction_label }} for the analytes evaluated above.
+      For substances without a formal Action Level (e.g., Total Chromium, Manganese, CTPV
+      from Cal/OSHA Table AC-1 and Fed OSHA Table Z-1), CCC applies an informal Action Level
+      at 1/2 the PEL, consistent with NIOSH and AIHA industrial hygiene best practice. This
+      maintains CCC's more protective posture even where the regulation does not define a
+      separate AL.
     </p>
   {% endif %}
 {% endblock %}
