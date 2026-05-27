@@ -3,28 +3,30 @@
 {% block title %}Sample: {{ sample.client_sample_id }}{% endblock %}
 
 {% block content %}
-  <div class="toolbar">
-    <h1 style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
-      <span>Sample: {{ sample.client_sample_id }}</span>
-      {% if sample.is_blank %}
-        <span class="flag-pill no_value" style="font-size: 0.85rem;">Field Blank</span>
-      {% endif %}
-      {% if not sample.is_standard_id_format %}
-        <span class="flag-pill warning" style="font-size: 0.85rem;"
-              title="Sample ID does not follow &lt;job&gt;-&lt;MATRIX&gt;-&lt;###&gt; convention. Use Edit to bring into compliance.">
-          Non-Standard ID Format
-        </span>
-      {% endif %}
-    </h1>
+  <div style="margin-bottom: 1rem;">
+    <div class="toolbar" style="align-items: flex-start; flex-wrap: wrap; gap: 0.75rem;">
+      <h1 style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; margin: 0;">
+        <span>Sample: {{ sample.client_sample_id }}</span>
+        {% if sample.is_blank %}
+          <span class="flag-pill no_value" style="font-size: 0.85rem;">Field Blank</span>
+        {% endif %}
+        {% if not sample.is_standard_id_format %}
+          <span class="flag-pill warning" style="font-size: 0.85rem;"
+                title="Sample ID does not follow &lt;job&gt;-&lt;MATRIX&gt;-&lt;###&gt; convention. Use Edit to bring into compliance.">
+            Non-Standard ID Format
+          </span>
+        {% endif %}
+      </h1>
+      <div style="display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0;">
+        <a class="btn secondary" style="white-space: nowrap;" href="{{ url_for('projects.detail', project_id=project.id) }}">Back to Project</a>
+        <a class="btn" style="white-space: nowrap;" href="{{ url_for('samples.edit', sample_id=sample.id) }}">Edit Sample</a>
+      </div>
+    </div>
     {% if not sample.is_standard_id_format %}
-      <div style="color: var(--muted); font-size: 0.8rem; flex-basis: 100%;">
+      <div style="color: var(--muted); font-size: 0.8rem; font-style: italic; margin-top: 0.4rem;">
         Sample ID does not follow &lt;job&gt;-&lt;MATRIX&gt;-&lt;###&gt; convention. Use Edit to bring into compliance.
       </div>
     {% endif %}
-    <div style="display: flex; gap: 0.5rem;">
-      <a class="btn secondary" href="{{ url_for('projects.detail', project_id=project.id) }}">Back to Project</a>
-      <a class="btn" href="{{ url_for('samples.edit', sample_id=sample.id) }}">Edit Sample</a>
-    </div>
   </div>
 
   <h2>Sample Information</h2>
