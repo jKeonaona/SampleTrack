@@ -1,4 +1,7 @@
 import re
+from datetime import date
+
+from sqlalchemy import or_
 
 from models import Threshold
 
@@ -22,6 +25,16 @@ def _to_float(value):
         return float(match.group())
     except (TypeError, ValueError):
         return None
+
+
+def _reference_date_for(sample):
+    """ISO date string used to pin threshold lookups to the sample's collection date."""
+    cd = getattr(sample, "collection_date", None)
+    if cd is None:
+        return date.today().isoformat()
+    if hasattr(cd, "isoformat"):
+        return cd.isoformat()
+    return str(cd)
 
 
 def compute_twa_8hr(sample, result):
@@ -51,9 +64,16 @@ def evaluate_result(sample, result):
         basis = "Direct"
         units = result.result_units
 
+    reference_date = _reference_date_for(sample)
     thresholds = (
         Threshold.query
-        .filter_by(analyte=result.analyte, matrix=sample.matrix, active=True)
+        .filter(
+            Threshold.analyte == result.analyte,
+            Threshold.matrix == sample.matrix,
+            Threshold.active.is_(True),
+            or_(Threshold.effective_date.is_(None), Threshold.effective_date <= reference_date),
+            or_(Threshold.superseded_date.is_(None), Threshold.superseded_date > reference_date),
+        )
         .all()
     )
 

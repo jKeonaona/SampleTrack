@@ -102,6 +102,10 @@ class Threshold(db.Model):
     active = db.Column(db.Boolean, default=True)
     jurisdiction = db.Column(db.String(20), nullable=False, default="Both")
     threshold_type = db.Column(db.String(20), nullable=False, default="PEL")
+    effective_date = db.Column(db.String(20), nullable=True)
+    superseded_date = db.Column(db.String(20), nullable=True)
+    source_citation = db.Column(db.String(200), nullable=True)
+    last_verified_date = db.Column(db.String(20), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (

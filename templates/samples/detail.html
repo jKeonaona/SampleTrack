@@ -176,6 +176,11 @@
         <h3 style="margin-top: 1.25rem;">
           {{ r.analyte }} — {{ ev.comparison_basis }}: {{ ev.comparison_value }} {{ ev.comparison_units or "" }}
         </h3>
+        {% if sample.collection_date %}
+          <p style="color: var(--muted); font-size: 0.8rem; margin: 0 0 0.5rem;">
+            Evaluated against thresholds effective {{ sample.collection_date.strftime("%Y-%m-%d") }}.
+          </p>
+        {% endif %}
         <table class="data">
           <thead>
             <tr>
@@ -189,8 +194,19 @@
           <tbody>
             {% for item in ev.evaluations %}
               <tr>
-                <td>{{ item.threshold.threshold_name }}</td>
-                <td>{{ item.threshold.regulatory_body }}</td>
+                <td>
+                  {% if item.threshold.source_citation %}
+                    <span title="{{ item.threshold.source_citation }}">{{ item.threshold.threshold_name }}</span>
+                  {% else %}
+                    {{ item.threshold.threshold_name }}
+                  {% endif %}
+                </td>
+                <td>
+                  {{ item.threshold.regulatory_body }}
+                  {% if item.threshold.source_citation %}
+                    <div style="color: var(--muted); font-size: 0.75rem;">{{ item.threshold.source_citation }}</div>
+                  {% endif %}
+                </td>
                 <td>{{ item.threshold.value }} {{ item.threshold.units }}</td>
                 <td>{{ "%.1f"|format(item.ratio * 100) }}%</td>
                 <td>

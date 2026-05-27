@@ -158,7 +158,7 @@ def detail(sample_id):
             if twa is None:
                 continue
             respirator_recommendations[r.analyte] = recommend_respirator(
-                twa, r.analyte, jurisdiction
+                twa, r.analyte, jurisdiction, collection_date=sample.collection_date
             )
 
     jurisdiction_label = None

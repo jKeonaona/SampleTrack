@@ -5,6 +5,9 @@ than the OSHA minimum which triggers at the PEL). APF tier selected so that
 TWA / APF <= PEL.
 """
 
+from datetime import date
+
+
 CCC_RESPIRATOR_TIERS = [
     (10, "Half-mask APR with HEPA filter"),
     (25, "Loose-fitting PAPR with HEPA filter"),
@@ -20,16 +23,30 @@ JURISDICTION_LABEL = {
 }
 
 
-def recommend_respirator(twa_value, analyte, project_jurisdiction):
+def recommend_respirator(twa_value, analyte, project_jurisdiction, collection_date=None):
     """Look up AL/PEL for analyte+jurisdiction and recommend APF tier.
+
+    collection_date pins the threshold lookup to thresholds in effect on that
+    date. Accepts an ISO date string or a date-like object; defaults to today.
 
     Returns dict with keys: status, required_apf, respirator_type, note,
     al_value, pel_value, jurisdiction_used.
     status: "none_required" | "respirator_required" | "extreme_exposure" | "unavailable"
     """
+    from sqlalchemy import or_
+
     from models import Threshold
 
+    reference_date = _reference_date(collection_date)
     jurisdiction_filter = Threshold.jurisdiction.in_([project_jurisdiction, "Both"])
+    effective_filter = or_(
+        Threshold.effective_date.is_(None),
+        Threshold.effective_date <= reference_date,
+    )
+    superseded_filter = or_(
+        Threshold.superseded_date.is_(None),
+        Threshold.superseded_date > reference_date,
+    )
 
     al = (
         Threshold.query
@@ -37,6 +54,8 @@ def recommend_respirator(twa_value, analyte, project_jurisdiction):
             Threshold.analyte == analyte,
             Threshold.threshold_type == "AL",
             jurisdiction_filter,
+            effective_filter,
+            superseded_filter,
         )
         .order_by(Threshold.value.asc())
         .first()
@@ -48,6 +67,8 @@ def recommend_respirator(twa_value, analyte, project_jurisdiction):
             Threshold.analyte == analyte,
             Threshold.threshold_type == "PEL",
             jurisdiction_filter,
+            effective_filter,
+            superseded_filter,
         )
         .order_by(Threshold.value.asc())
         .first()
@@ -99,3 +120,11 @@ def recommend_respirator(twa_value, analyte, project_jurisdiction):
         "pel_value": pel_value,
         "jurisdiction_used": project_jurisdiction,
     }
+
+
+def _reference_date(value):
+    if value is None:
+        return date.today().isoformat()
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return str(value)
