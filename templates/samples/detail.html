@@ -103,62 +103,65 @@
     <p style="color: var(--muted);">No analytical results recorded for this sample.</p>
   {% endif %}
 
-  {% if amr %}
-    <h2>Field Air Monitor Report</h2>
-    <div class="info-block">
-      <p style="margin-top: 0;">
-        <a href="{{ url_for('amr.detail', id=amr.id) }}">View full report →</a>
-      </p>
-      <dl>
-        <dt>Monitoring Phase</dt><dd>{{ amr.monitoring_phase or "—" }}</dd>
-        <dt>Time Started</dt><dd>{{ amr.time_started or "—" }} {{ amr.am_pm_started or "" }}</dd>
-        <dt>Time Stopped</dt><dd>{{ amr.time_stopped or "—" }} {{ amr.am_pm_stopped or "" }}</dd>
-        <dt>Liters per Minute</dt><dd>{{ amr.liters_per_minute or "—" }}</dd>
-        <dt>Calibrated Before</dt><dd>{{ "Yes" if amr.calibrated_before else "No" }}</dd>
-        <dt>Calibrated After</dt><dd>{{ "Yes" if amr.calibrated_after else "No" }}</dd>
-        {% if amr.is_personal_sample %}
-          <dt>Worker Monitored</dt><dd>{{ amr.worker_monitored or "—" }}</dd>
-        {% endif %}
-        {% if amr.is_area_sample %}
-          <dt>Monitor Location</dt><dd>{{ amr.monitor_location or "—" }}</dd>
-        {% endif %}
-        <dt>Blasting Location</dt><dd>{{ amr.blasting_location or "—" }}</dd>
-        <dt>Placed By</dt><dd>{{ amr.placed_by or "—" }}</dd>
-        <dt>Removed By</dt><dd>{{ amr.removed_by or "—" }}</dd>
-      </dl>
-    </div>
-  {% endif %}
+  <section class="field-record">
+    <h2>Field Record</h2>
 
-  {% if fsr %}
-    <h2>Field Sample Record</h2>
-    <div class="info-block">
-      <p style="margin-top: 0;">
-        <a href="{{ url_for('fsr.detail', id=fsr.id) }}">View full record →</a>
-      </p>
-      <dl>
-        <dt>Collection Date</dt><dd>{{ fsr.collection_date or "—" }}</dd>
-        <dt>Collection Time</dt><dd>{{ fsr.collection_time or "—" }}</dd>
-        <dt>Collected By</dt><dd>{{ fsr.collected_by or "—" }}</dd>
-        <dt>Location</dt><dd>{{ fsr.location_description or "—" }}</dd>
-        <dt>Matrix-Specific Notes</dt><dd>{{ fsr.matrix_specific_notes or "—" }}</dd>
-        <dt>Methods Requested</dt><dd>{{ fsr.analytical_methods_requested or "—" }}</dd>
-        <dt>Laboratory Sent To</dt><dd>{{ fsr.laboratory_sent_to or "—" }}</dd>
-      </dl>
-    </div>
-  {% endif %}
+    {% if amr %}
+      <div class="info-block field-record-summary">
+        <h3 style="margin-top: 0;">Air Monitor Report</h3>
+        <dl>
+          <dt>Monitoring Date</dt><dd>{{ amr.monitoring_date or "—" }}</dd>
+          <dt>Pump Serial</dt><dd>{{ amr.pump_serial or "—" }}</dd>
+          <dt>Cassette #</dt><dd>{{ amr.cassette_number or "—" }}</dd>
+          <dt>Calibration Pre / Post</dt><dd>{{ amr.calibrated_before_rate or "—" }} / {{ amr.calibrated_after_rate or "—" }} LPM</dd>
+          <dt>Cassette Worn Properly</dt><dd>
+            {% if amr.cassette_worn_properly is none %}—{% elif amr.cassette_worn_properly %}Yes{% else %}No{% endif %}
+          </dd>
+          {% if amr.is_personal_sample %}
+            <dt>Worker</dt><dd>{{ amr.worker_monitored or "—" }}</dd>
+            <dt>Job Duties</dt><dd>{{ amr.job_duties or "—" }}</dd>
+            <dt>PPE Worn</dt><dd>{{ amr.ppe_worn or "—" }}</dd>
+          {% else %}
+            <dt>Monitor Location</dt><dd>{{ amr.monitor_location or "—" }}</dd>
+            <dt>Blasting Location</dt><dd>{{ amr.blasting_location or "—" }}</dd>
+          {% endif %}
+          <dt>Weather</dt><dd>
+            {{ amr.weather_conditions or "—" }}{% if amr.temperature_value %}, {{ amr.temperature_value }}°{{ amr.temperature_unit or "" }}{% endif %}{% if amr.wind_speed_direction %}, Wind {{ amr.wind_speed_direction }}{% endif %}
+          </dd>
+          <dt>Unusual Events</dt><dd>{{ amr.unusual_details or "—" }}</dd>
+        </dl>
+        <div class="actions" style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+          <a href="{{ url_for('amr.edit', id=amr.id) }}" class="btn">Edit Air Monitor Report</a>
+          <a href="{{ url_for('amr.detail', id=amr.id) }}" class="btn secondary">View full report</a>
+        </div>
+      </div>
 
-  {% if not amr and not fsr %}
-    {% set is_air = sample.matrix in ("Personal Air", "Area Air") or (sample.matrix_code and sample.matrix_code|upper in ["PM", "AM"]) %}
-    <h2>Field Report</h2>
-    <div class="info-block" style="color: var(--muted);">
-      No field report on file for this sample.
-      {% if is_air %}
-        <a href="{{ url_for('amr.new', client_sample_id=sample.client_sample_id) }}">Create one →</a>
-      {% else %}
-        <a href="{{ url_for('fsr.new', client_sample_id=sample.client_sample_id) }}">Create one →</a>
-      {% endif %}
-    </div>
-  {% endif %}
+    {% elif fsr %}
+      <div class="info-block field-record-summary">
+        <h3 style="margin-top: 0;">Field Sample Record</h3>
+        <dl>
+          <dt>Collection Date</dt><dd>{{ fsr.collection_date or "—" }}</dd>
+          <dt>Collection Time</dt><dd>{{ fsr.collection_time or "—" }}</dd>
+          <dt>Collected By</dt><dd>{{ fsr.collected_by or "—" }}</dd>
+          <dt>Location</dt><dd>{{ fsr.location_description or "—" }}</dd>
+          <dt>Matrix-Specific Notes</dt><dd>{{ fsr.matrix_specific_notes or "—" }}</dd>
+          <dt>Methods Requested</dt><dd>{{ fsr.analytical_methods_requested or "—" }}</dd>
+          <dt>Lab Sent To</dt><dd>{{ fsr.laboratory_sent_to or "—" }}</dd>
+          <dt>Date Sent to Lab</dt><dd>{{ fsr.date_sent_to_lab or "—" }}</dd>
+          <dt>General Notes</dt><dd>{{ fsr.general_notes or "—" }}</dd>
+        </dl>
+        <div class="actions" style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+          <a href="{{ url_for('fsr.edit', id=fsr.id) }}" class="btn">Edit Field Sample Record</a>
+          <a href="{{ url_for('fsr.detail', id=fsr.id) }}" class="btn secondary">View full record</a>
+        </div>
+      </div>
+
+    {% else %}
+      <div class="info-block" style="color: var(--muted);">
+        No field record on file for this sample. The system normally auto-creates one. If this sample is missing, contact admin.
+      </div>
+    {% endif %}
+  </section>
 
   {% set ns = namespace(has_any=False) %}
   {% for r in results %}
