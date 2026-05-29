@@ -225,6 +225,8 @@ class FieldSampleRecord(db.Model):
     location_description = db.Column(db.Text, nullable=True)
 
     matrix_specific_notes = db.Column(db.Text, nullable=True)
+    # Allowed: Eating Area, Vehicle, Decon Area, Shower Facility, Clean Room, Restroom, Other. NULL for non-wipe matrices.
+    area_type = db.Column(db.String(50), nullable=True)
 
     analytical_methods_requested = db.Column(db.Text, nullable=True)
 

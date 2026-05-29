@@ -162,6 +162,9 @@
           <dt>Collection Time</dt><dd>{{ fsr.collection_time or "—" }}</dd>
           <dt>Collected By</dt><dd>{{ fsr.collected_by or "—" }}</dd>
           <dt>Location</dt><dd>{{ fsr.location_description or "—" }}</dd>
+          {% if fsr.area_type %}
+            <dt>Area Type</dt><dd>{{ fsr.area_type }}</dd>
+          {% endif %}
           <dt>Matrix-Specific Notes</dt><dd>{{ fsr.matrix_specific_notes or "—" }}</dd>
           <dt>Methods Requested</dt><dd>{{ fsr.analytical_methods_requested or "—" }}</dd>
           <dt>Lab Sent To</dt><dd>{{ fsr.laboratory_sent_to or "—" }}</dd>

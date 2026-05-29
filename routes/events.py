@@ -4,6 +4,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from models import AirMonitorReport, FieldSampleRecord, Project, Result, Sample, SamplingEvent, db
+from routes.fsr import ALLOWED_AREA_TYPES
 from utils.sample_id import (
     MATRIX_CODE_OPTIONS,
     MATRIX_CODE_TO_MATRIX,
@@ -226,6 +227,7 @@ def detail(id):
         phase_options=PHASE_OPTIONS,
         am_pm_options=AM_PM_OPTIONS,
         temp_unit_options=TEMP_UNIT_OPTIONS,
+        area_types=ALLOWED_AREA_TYPES,
         available_projects=Project.query.order_by(Project.project_number).all(),
     )
 
@@ -386,6 +388,7 @@ def create_fsr(event_id, sample_id):
         fsr=fsr,
         sample=sample,
         event=event,
+        area_types=ALLOWED_AREA_TYPES,
         available_projects=Project.query.order_by(Project.project_number).all(),
     )
     return jsonify({"status": "ok", "fsr_id": fsr.id, "html": html})
@@ -401,6 +404,7 @@ def _form_from_fsr(fsr):
         "collected_by": fsr.collected_by or "",
         "location_description": fsr.location_description or "",
         "matrix_specific_notes": fsr.matrix_specific_notes or "",
+        "area_type": fsr.area_type or "",
         "analytical_methods_requested": fsr.analytical_methods_requested or "",
         "laboratory_sent_to": fsr.laboratory_sent_to or "",
         "date_sent_to_lab": fsr.date_sent_to_lab or "",

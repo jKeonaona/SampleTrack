@@ -57,6 +57,17 @@
 
   <h2 class="fsr-section">Matrix-Specific Details</h2>
   <div class="info-block">
+    {% if linked_sample and linked_sample.matrix == "Wipe" %}
+      <div class="field">
+        <label for="area_type">Area Type</label>
+        <select id="area_type" name="area_type">
+          <option value="">(select area type)</option>
+          {% for opt in area_types %}
+            <option value="{{ opt }}" {% if form.area_type == opt %}selected{% endif %}>{{ opt }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    {% endif %}
     <div class="field">
       <label for="matrix_specific_notes">Matrix-Specific Notes</label>
       <textarea id="matrix_specific_notes" name="matrix_specific_notes" rows="3">{{ form.matrix_specific_notes or '' }}</textarea>

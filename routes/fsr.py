@@ -8,6 +8,22 @@ from models import FieldSampleRecord, Project, Sample, db
 fsr_bp = Blueprint("fsr", __name__, url_prefix="/fsr")
 
 
+ALLOWED_AREA_TYPES = (
+    "Eating Area",
+    "Vehicle",
+    "Decon Area",
+    "Shower Facility",
+    "Clean Room",
+    "Restroom",
+    "Other",
+)
+
+
+def _coerce_area_type(value):
+    v = (value or "").strip()
+    return v if v in ALLOWED_AREA_TYPES else None
+
+
 def _empty_form():
     return {
         "client_sample_id": "",
@@ -18,6 +34,7 @@ def _empty_form():
         "collected_by": "",
         "location_description": "",
         "matrix_specific_notes": "",
+        "area_type": "",
         "analytical_methods_requested": "",
         "laboratory_sent_to": "",
         "date_sent_to_lab": "",
@@ -35,6 +52,7 @@ def _form_from_fsr(fsr):
         "collected_by": fsr.collected_by or "",
         "location_description": fsr.location_description or "",
         "matrix_specific_notes": fsr.matrix_specific_notes or "",
+        "area_type": fsr.area_type or "",
         "analytical_methods_requested": fsr.analytical_methods_requested or "",
         "laboratory_sent_to": fsr.laboratory_sent_to or "",
         "date_sent_to_lab": fsr.date_sent_to_lab or "",
@@ -53,6 +71,7 @@ def _form_from_request():
         "collected_by": (form.get("collected_by") or "").strip(),
         "location_description": (form.get("location_description") or "").strip(),
         "matrix_specific_notes": (form.get("matrix_specific_notes") or "").strip(),
+        "area_type": (form.get("area_type") or "").strip(),
         "analytical_methods_requested": (form.get("analytical_methods_requested") or "").strip(),
         "laboratory_sent_to": (form.get("laboratory_sent_to") or "").strip(),
         "date_sent_to_lab": (form.get("date_sent_to_lab") or "").strip(),
@@ -75,17 +94,20 @@ def _apply_form_to_fsr(fsr, form):
     fsr.collected_by = form["collected_by"] or None
     fsr.location_description = form["location_description"] or None
     fsr.matrix_specific_notes = form["matrix_specific_notes"] or None
+    fsr.area_type = _coerce_area_type(form["area_type"])
     fsr.analytical_methods_requested = form["analytical_methods_requested"] or None
     fsr.laboratory_sent_to = form["laboratory_sent_to"] or None
     fsr.date_sent_to_lab = form["date_sent_to_lab"] or None
     fsr.general_notes = form["general_notes"] or None
 
 
-def _render_form(template, form, fsr=None):
+def _render_form(template, form, fsr=None, linked_sample=None):
     return render_template(
         template,
         form=form,
         fsr=fsr,
+        linked_sample=linked_sample,
+        area_types=ALLOWED_AREA_TYPES,
         available_projects=Project.query.order_by(Project.project_number).all(),
     )
 
@@ -119,9 +141,11 @@ def list_fsr():
 def new():
     form = _empty_form()
     prefill = (request.args.get("client_sample_id") or "").strip()
+    linked_sample = None
     if prefill:
         form["client_sample_id"] = prefill
-    return _render_form("fsr/new.html", form)
+        linked_sample = Sample.query.filter_by(client_sample_id=prefill).first()
+    return _render_form("fsr/new.html", form, linked_sample=linked_sample)
 
 
 @fsr_bp.route("/new", methods=["POST"])
@@ -130,7 +154,8 @@ def create():
     form = _form_from_request()
     if not form["client_sample_id"]:
         flash("Client Sample ID is required.", "error")
-        return _render_form("fsr/new.html", form), 400
+        linked_sample = Sample.query.filter_by(client_sample_id=form["client_sample_id"]).first() if form["client_sample_id"] else None
+        return _render_form("fsr/new.html", form, linked_sample=linked_sample), 400
 
     fsr = FieldSampleRecord(created_by_user_id=current_user.id)
     _apply_form_to_fsr(fsr, form)
@@ -157,7 +182,8 @@ def detail(id):
 def edit(id):
     fsr = FieldSampleRecord.query.get_or_404(id)
     form = _form_from_fsr(fsr)
-    return _render_form("fsr/edit.html", form, fsr=fsr)
+    linked_sample = Sample.query.filter_by(client_sample_id=fsr.client_sample_id).first()
+    return _render_form("fsr/edit.html", form, fsr=fsr, linked_sample=linked_sample)
 
 
 @fsr_bp.route("/<int:id>/edit_save", methods=["POST"])
@@ -173,7 +199,8 @@ def edit_save(id):
         if is_ajax:
             return jsonify({"status": "error", "message": "Client Sample ID is required."}), 400
         flash("Client Sample ID is required.", "error")
-        return _render_form("fsr/edit.html", form, fsr=fsr), 400
+        linked_sample = Sample.query.filter_by(client_sample_id=fsr.client_sample_id).first()
+        return _render_form("fsr/edit.html", form, fsr=fsr, linked_sample=linked_sample), 400
 
     _apply_form_to_fsr(fsr, form)
     db.session.commit()

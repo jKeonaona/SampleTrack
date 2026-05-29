@@ -52,6 +52,17 @@
 
     <h3>Matrix-Specific Details</h3>
     <div class="info-block">
+      {% if sample and sample.matrix == "Wipe" %}
+        <div class="field">
+          <label>Area Type</label>
+          <select name="area_type">
+            <option value="">(select area type)</option>
+            {% for opt in area_types %}
+              <option value="{{ opt }}" {% if form.area_type == opt %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
       <div class="field">
         <label>Matrix-Specific Notes</label>
         <textarea name="matrix_specific_notes" rows="2" placeholder="Soil depth, wipe surface type, paint chip component, etc.">{{ form.matrix_specific_notes or '' }}</textarea>

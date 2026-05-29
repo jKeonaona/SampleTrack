@@ -56,6 +56,9 @@
   <h2>Matrix-Specific Details</h2>
   <div class="info-block">
     <dl>
+      {% if fsr.area_type %}
+        <dt>Area Type</dt><dd>{{ fsr.area_type }}</dd>
+      {% endif %}
       <dt>Notes</dt><dd>{{ fsr.matrix_specific_notes or "—" }}</dd>
     </dl>
   </div>
