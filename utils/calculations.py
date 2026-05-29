@@ -37,6 +37,11 @@ def _reference_date_for(sample):
     return str(cd)
 
 
+def _normalize_units(u):
+    """Normalize unit strings for case-insensitive, whitespace-tolerant matching."""
+    return (u or "").strip().lower()
+
+
 def get_applicable_thresholds(result, candidate_thresholds, basis=None):
     """Filter candidate thresholds to those whose duration matches the result basis.
 
@@ -91,7 +96,8 @@ def get_applicable_thresholds(result, candidate_thresholds, basis=None):
         # limitation acceptable for Lead since RCRA 8 TCLP and STLC values are identical.
         # Future slice will add test_type discrimination for non-RCRA-8 analytes.
         candidates = [t for t in candidate_thresholds if t.threshold_type in ("TCLP", "STLC", "TTLC")]
-        return [t for t in candidates if t.units == result.result_units]
+        result_units_norm = _normalize_units(result.result_units)
+        return [t for t in candidates if _normalize_units(t.units) == result_units_norm]
     if sample_matrix in ("Wipe", "Soil", "Paint Chip"):
         return [t for t in candidate_thresholds if t.threshold_type == "Clearance"]
     # Truly unknown matrix — fall through to PEL/AL as the safest default.
