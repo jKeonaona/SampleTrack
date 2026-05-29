@@ -205,6 +205,11 @@
             Evaluated against thresholds effective {{ sample.collection_date.strftime("%Y-%m-%d") }}{% if ev.comparison_basis and ev.comparison_basis != "8-hr TWA" %} (basis: {{ ev.comparison_basis }}){% endif %}.
           </p>
         {% endif %}
+        {% if sample.matrix == "Wipe" %}
+          <div class="info-block" style="background: #fef3c7; border-color: #fcd34d; color: #92400e; font-size: 0.85rem; margin-bottom: 0.75rem;">
+            CCC operates outside HUD and EPA RRP jurisdictions. Regulatory clearance limits shown for reference only. Any lead detection on a wipe sample warrants review regardless of comparison to these values.
+          </div>
+        {% endif %}
         <table class="data">
           <thead>
             <tr>
