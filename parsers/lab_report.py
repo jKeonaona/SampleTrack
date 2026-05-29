@@ -52,6 +52,16 @@ MATRIX_OPTIONS = [
 ]
 
 
+# Canonical extraction/panel codes carried on each result. Claude is asked to
+# emit these directly in the dedicated extraction_method field; the suffix map
+# below is the Python fallback for when it instead tacks the code onto the
+# analyte name (e.g. "Iron (SPLP)").
+EXTRACTION_METHODS = ("TTLC", "TCLP", "STLC", "SPLP")
+ANALYTE_SUFFIX_TO_EXTRACTION = {
+    f" ({code})": code for code in EXTRACTION_METHODS
+}
+
+
 SYSTEM_PROMPT = (
     "You extract structured data from environmental lab analytical reports. "
     "Output ONLY valid JSON matching the provided schema. "
@@ -85,7 +95,8 @@ SCHEMA_DESCRIPTION = """\
           "result_units": "Units for this result (string) or null",
           "reporting_limit": "Reporting limit / detection limit (string) or null",
           "dilution_factor": "Dilution factor (string) or null",
-          "date_analyzed": "Date (and time if printed) the analysis was performed (string) or null"
+          "date_analyzed": "Date (and time if printed) the analysis was performed (string) or null",
+          "extraction_method": "Panel/extraction code for this result: 'TTLC', 'TCLP', 'STLC', 'SPLP', or null (string) or null"
         }
       ]
     }
@@ -112,6 +123,15 @@ USER_PROMPT = (
     "- pump_flow_rate should include the units exactly as printed.\n"
     "- collection_start_time and collection_end_time should be in HH:MM format "
     "(24-hour preferred) if possible; otherwise return the printed text.\n"
+    "- For each result row, identify which McCampbell panel section it appears "
+    "under and set the extraction_method field accordingly:\n"
+    "    - 'CAM / CCR 17 Metals' or 'CAM 17 Metals' panel -> 'TTLC'\n"
+    "    - 'Metals (TCLP)' panel -> 'TCLP'\n"
+    "    - 'Metals (STLC)' panel -> 'STLC'\n"
+    "    - 'Metals (SPLP)' panel -> 'SPLP'\n"
+    "    - Any other panel or if unclear -> null\n"
+    "  Use plain analyte names without suffixes (e.g., 'Iron' not 'Iron (SPLP)'). "
+    "Panel information lives in extraction_method only.\n"
     "Return ONLY the JSON object."
 )
 
@@ -351,13 +371,26 @@ def _normalize_samples(samples_in):
         for r in sample.get("results") or []:
             if not isinstance(r, dict):
                 continue
+            analyte = r.get("analyte") or ""
+            extraction_method = r.get("extraction_method") or None
+            # Always strip a trailing panel suffix from the analyte name. If
+            # extraction_method was not provided by Claude, recover it from the
+            # suffix as a fallback. If extraction_method was provided, the strip
+            # is defensive cleanup to handle the case where Claude emits both forms.
+            for suffix, code in ANALYTE_SUFFIX_TO_EXTRACTION.items():
+                if analyte.endswith(suffix):
+                    analyte = analyte[: -len(suffix)].strip()
+                    if not extraction_method:
+                        extraction_method = code
+                    break
             normalized["results"].append({
-                "analyte": r.get("analyte") or "",
+                "analyte": analyte,
                 "result_value": r.get("result_value") or "",
                 "result_units": r.get("result_units"),
                 "reporting_limit": r.get("reporting_limit"),
                 "dilution_factor": r.get("dilution_factor"),
                 "date_analyzed": r.get("date_analyzed"),
+                "extraction_method": extraction_method,
             })
         out.append(normalized)
     return out

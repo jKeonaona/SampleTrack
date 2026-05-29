@@ -221,6 +221,7 @@ def _process_uploaded_file(uploaded):
                     reporting_limit=r_data.get("reporting_limit"),
                     dilution_factor=r_data.get("dilution_factor"),
                     method_reference=sample_data.get("method"),
+                    extraction_method=r_data.get("extraction_method"),
                     lab_report_number=workorder,
                     date_analyzed=_parse_datetime(r_data.get("date_analyzed")),
                 ))
@@ -521,6 +522,7 @@ def save():
                 reporting_limit=r_data.get("reporting_limit"),
                 dilution_factor=r_data.get("dilution_factor"),
                 method_reference=sample_data.get("method"),
+                extraction_method=r_data.get("extraction_method"),
                 lab_report_number=workorder,
                 date_analyzed=_parse_datetime(r_data.get("date_analyzed")),
             ))

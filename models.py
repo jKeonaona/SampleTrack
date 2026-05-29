@@ -252,6 +252,7 @@ class Result(db.Model):
     reporting_limit = db.Column(db.String(50), nullable=True)
     dilution_factor = db.Column(db.String(20), nullable=True)
     method_reference = db.Column(db.String(100), nullable=True)
+    extraction_method = db.Column(db.String(50), nullable=True)
     lab_report_number = db.Column(db.String(100), nullable=True, index=True)
     report_date = db.Column(db.Date, nullable=True)
     date_analyzed = db.Column(db.DateTime, nullable=True)
