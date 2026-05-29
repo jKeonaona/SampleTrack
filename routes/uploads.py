@@ -31,6 +31,32 @@ def _existing_sample_methods(sample_obj):
     return {r.method_reference for r in sample_obj.results if r.method_reference}
 
 
+def _normalize_date(d):
+    """Normalize date_analyzed values to a stable key (handles datetime, str, None)."""
+    if d is None:
+        return None
+    if hasattr(d, "isoformat"):
+        return d.isoformat()
+    return str(d).strip()
+
+
+def _result_key(analyte, units, date_analyzed):
+    """Stable key identifying a unique lab observation."""
+    return (
+        (analyte or "").strip().lower(),
+        (units or "").strip().lower(),
+        _normalize_date(date_analyzed),
+    )
+
+
+def _existing_result_keys(sample):
+    """Set of _result_key tuples for results already stored on this sample."""
+    return {
+        _result_key(r.analyte, r.result_units, r.date_analyzed)
+        for r in sample.results
+    }
+
+
 def _process_uploaded_file(uploaded):
     """Process one uploaded file. Returns (kind, entry, auto_created_info).
 
@@ -95,6 +121,7 @@ def _process_uploaded_file(uploaded):
         file_samples_saved = 0
         file_samples_merged = 0
         file_results_saved = 0
+        file_results_skipped = 0
         file_duplicates_skipped = 0
         file_events_created = 0
         file_records_created = 0
@@ -135,28 +162,33 @@ def _process_uploaded_file(uploaded):
                     for existing in existing_matches
                 )
                 if has_overlap:
-                    file_duplicates_skipped += 1
-                    continue
-
-                matrix = (sample_data.get("matrix") or "Other").strip() or "Other"
-                target_sample = Sample(
-                    project_id=project.id,
-                    client_sample_id=client_sample_id,
-                    lab_sample_id=sample_data.get("lab_sample_id"),
-                    lab_workorder=workorder,
-                    matrix=matrix,
-                    matrix_code=sample_data.get("matrix_code"),
-                    is_blank=bool(sample_data.get("is_blank")),
-                    collection_date=_parse_date(sample_data.get("collection_date")),
-                    collection_time=sample_data.get("collection_time"),
-                    collection_start_time=sample_data.get("collection_start_time"),
-                    collection_end_time=sample_data.get("collection_end_time"),
-                    sample_volume=sample_data.get("sample_volume"),
-                    pump_flow_rate=sample_data.get("pump_flow_rate"),
-                )
-                db.session.add(target_sample)
-                db.session.flush()
-                file_samples_saved += 1
+                    # Slice 6: addon report path. Same project + same client_sample_id +
+                    # analytical methods overlap → merge new results into the existing
+                    # populated sample. Per-result dedup in the result loop below prevents
+                    # duplication when the same PDF is re-uploaded.
+                    target_sample = existing_matches[0]
+                    file_samples_merged += 1
+                    # fall through to the shared result-insertion loop
+                else:
+                    matrix = (sample_data.get("matrix") or "Other").strip() or "Other"
+                    target_sample = Sample(
+                        project_id=project.id,
+                        client_sample_id=client_sample_id,
+                        lab_sample_id=sample_data.get("lab_sample_id"),
+                        lab_workorder=workorder,
+                        matrix=matrix,
+                        matrix_code=sample_data.get("matrix_code"),
+                        is_blank=bool(sample_data.get("is_blank")),
+                        collection_date=_parse_date(sample_data.get("collection_date")),
+                        collection_time=sample_data.get("collection_time"),
+                        collection_start_time=sample_data.get("collection_start_time"),
+                        collection_end_time=sample_data.get("collection_end_time"),
+                        sample_volume=sample_data.get("sample_volume"),
+                        pump_flow_rate=sample_data.get("pump_flow_rate"),
+                    )
+                    db.session.add(target_sample)
+                    db.session.flush()
+                    file_samples_saved += 1
 
             _event, event_created = ensure_event_for_sample(target_sample)
             if event_created:
@@ -165,11 +197,21 @@ def _process_uploaded_file(uploaded):
             if record_created:
                 file_records_created += 1
 
+            known_result_keys = _existing_result_keys(target_sample)
             for r_data in sample_data.get("results") or []:
                 analyte = (r_data.get("analyte") or "").strip()
                 result_value = (r_data.get("result_value") or "").strip()
                 if not analyte or not result_value:
                     continue
+                key = _result_key(
+                    r_data.get("analyte"),
+                    r_data.get("result_units") or sample_data.get("units"),
+                    _parse_datetime(r_data.get("date_analyzed")),
+                )
+                if key in known_result_keys:
+                    file_results_skipped += 1
+                    continue
+                known_result_keys.add(key)
                 db.session.add(Result(
                     sample_id=target_sample.id,
                     analyte=analyte,
@@ -193,6 +235,7 @@ def _process_uploaded_file(uploaded):
             "samples_saved": file_samples_saved,
             "samples_merged": file_samples_merged,
             "results_saved": file_results_saved,
+            "results_skipped": file_results_skipped,
             "duplicates_skipped": file_duplicates_skipped,
             "events_created": file_events_created,
             "records_created": file_records_created,
