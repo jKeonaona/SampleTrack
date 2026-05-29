@@ -231,8 +231,8 @@
                     <div style="color: var(--muted); font-size: 0.75rem;">{{ item.threshold.source_citation }}</div>
                   {% endif %}
                 </td>
-                <td>{{ item.threshold.value }} {{ item.threshold.units }}</td>
-                <td>{{ "%.1f"|format(item.ratio * 100) }}%</td>
+                <td>{% if item.threshold.value is not none %}{{ item.threshold.value }} {{ item.threshold.units }}{% else %}N/A{% endif %}</td>
+                <td>{% if item.ratio is not none %}{{ "%.1f"|format(item.ratio * 100) }}%{% else %}N/A{% endif %}</td>
                 <td>
                   {% if item.exceeded %}
                     {% if "Action Level" in item.threshold.threshold_name %}
