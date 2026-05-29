@@ -1,5 +1,6 @@
 import re
 from datetime import date
+from types import SimpleNamespace
 
 from sqlalchemy import or_
 
@@ -102,7 +103,57 @@ def compute_twa_8hr(sample, result):
     return round(twa, 3)
 
 
+def _evaluate_wipe(sample, result):
+    """Wipe samples flag on any-detect, not on HUD or EPA dust-lead thresholds.
+
+    CCC does no residential or commercial work, so HUD/EPA Dust-Lead values
+    are reference-only and not used for flagging. Any positive numeric result
+    on a clean-area wipe triggers cleaning and resampling.
+    """
+    is_detect = result.result_numeric is not None and result.result_numeric > 0
+    comparison_value = result.result_numeric if result.result_numeric is not None else 0.0
+    units = result.result_units
+
+    synthetic_threshold = SimpleNamespace(
+        threshold_name="CCC Clean Area Standard",
+        threshold_type="Zero Tolerance",
+        regulatory_body="CCC",
+        value=None,
+        units=units,
+        effective_date=None,
+        superseded_date=None,
+        jurisdiction="",
+        analyte=result.analyte,
+        matrix=sample.matrix,
+        notes="",
+        last_verified_date=None,
+        source_citation=(
+            "CCC internal standard: any detect on a clean-area wipe triggers "
+            "cleaning and resampling. HUD and EPA Dust-Lead values are reference "
+            "only and are not used for flagging."
+        ),
+    )
+
+    evaluation_entry = {
+        "threshold": synthetic_threshold,
+        "exceeded": is_detect,
+        "approaching": False,
+        "ratio": None,
+    }
+
+    return {
+        "comparison_value": comparison_value,
+        "comparison_basis": "Any Detect",
+        "comparison_units": units,
+        "evaluations": [evaluation_entry],
+        "overall_status": "exceeded" if is_detect else "ok",
+    }
+
+
 def evaluate_result(sample, result):
+    if sample.matrix == "Wipe":
+        return _evaluate_wipe(sample, result)
+
     if sample.matrix == "Personal Air":
         comparison_value = compute_twa_8hr(sample, result)
         basis = "8-hr TWA"
