@@ -83,6 +83,15 @@ def get_applicable_thresholds(result, candidate_thresholds, basis=None):
         return [t for t in candidate_thresholds if t.threshold_type == "Ambient"]
     if sample_matrix == "Personal Air":
         return [t for t in candidate_thresholds if t.threshold_type in ("PEL", "AL")]
+    if sample_matrix == "Spent Abrasive":
+        # Hazardous waste characterization thresholds: TCLP/STLC are mg/L (leachate),
+        # TTLC is mg/kg (total). Unit matching prevents a mg/kg total result from
+        # being compared against a mg/L leachate threshold or vice versa.
+        # SPLP results (also mg/L) will match TCLP/STLC unit-wise; this is a known
+        # limitation acceptable for Lead since RCRA 8 TCLP and STLC values are identical.
+        # Future slice will add test_type discrimination for non-RCRA-8 analytes.
+        candidates = [t for t in candidate_thresholds if t.threshold_type in ("TCLP", "STLC", "TTLC")]
+        return [t for t in candidates if t.units == result.result_units]
     if sample_matrix in ("Wipe", "Soil", "Paint Chip"):
         return [t for t in candidate_thresholds if t.threshold_type == "Clearance"]
     # Truly unknown matrix — fall through to PEL/AL as the safest default.
